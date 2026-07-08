@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Continuity Builder — BIA → BCP → Test → AAR</title>
+<style>
+  :root{
+    --ink:#0f172a; --ink2:#334155; --muted:#64748b; --line:#e2e8f0; --line2:#eef2f7;
+    --bg:#f6f8fb; --card:#ffffff; --accent:#1d4ed8; --accent-soft:#eff4ff;
+    --green:#0e9f6e; --green-soft:#e7f7f0; --amber:#b45309; --amber-soft:#fdf3e7;
+    --red:#dc2626; --red-soft:#fdeded; --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:var(--bg); line-height:1.5; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 80px}
+  header.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+  .top-inner{max-width:1080px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:700;letter-spacing:-.01em;font-size:16px}
+  .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+  .brand small{display:block;font-weight:500;color:var(--muted);font-size:11px;letter-spacing:.02em}
+  .spacer{flex:1}
+  .fw-badge{font-size:12px;font-weight:600;color:var(--ink2);background:#f1f5f9;padding:7px 13px;border-radius:20px;border:1px solid var(--line);white-space:nowrap;display:flex;align-items:center;gap:7px}
+  .fw-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+  .steps{display:flex;gap:6px;max-width:1080px;margin:18px auto 0;padding:0 24px;flex-wrap:wrap}
+  .step{flex:1;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;gap:11px;align-items:center;transition:.15s;box-shadow:var(--shadow)}
+  .step:hover{border-color:#cbd5e1}
+  .step.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .step.done .num{background:var(--green);border-color:var(--green);color:#fff}
+  .step .num{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--muted);flex-shrink:0}
+  .step.active .num{background:var(--accent);border-color:var(--accent);color:#fff}
+  .step .lbl{font-size:13px;font-weight:600;line-height:1.2}
+  .step .lbl small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+
+  main{margin-top:22px}
+  .panel{display:none;animation:fade .25s ease}
+  .panel.show{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:var(--shadow);margin-bottom:18px}
+  h1{font-size:23px;letter-spacing:-.02em;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px}
+  h3{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:26px 0 12px}
+  h3 .hint{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted)}
+  label.fld{display:block;font-size:13px;font-weight:600;margin:0 0 6px;color:var(--ink2)}
+  input[type=text],input[type=date],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:#fff;transition:.15s}
+  input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{resize:vertical;min-height:70px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;user-select:none;transition:.15s;color:var(--ink2)}
+  .chip:hover{border-color:#cbd5e1}
+  .chip.on{background:var(--accent-soft);border-color:#bcd0ff;color:var(--accent);font-weight:600}
+  .chip.on::before{content:"✓ ";font-weight:700}
+
+  /* sector cards */
+  .sector-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:620px){.sector-cards{grid-template-columns:1fr}}
+  .sector-card{border:2px solid var(--line);border-radius:14px;padding:18px 20px;cursor:pointer;transition:.15s;background:#fff}
+  .sector-card:hover{border-color:#cbd5e1}
+  .sector-card.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .sector-card .sc-top{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+  .sector-card .sc-ico{font-size:22px}
+  .sector-card .sc-fw{font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-soft);display:inline-block;padding:3px 9px;border-radius:6px;margin-top:8px}
+  .sector-card .sc-d{font-size:13px;color:var(--muted);margin-top:9px}
+
+  .btn{border:0;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit}
+  .btn.primary{background:var(--accent);color:#fff}.btn.primary:hover{background:#1a44bf}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink2)}.btn.ghost:hover{border-color:#cbd5e1}
+  .btn.sm{padding:7px 12px;font-size:13px}
+  .navrow{display:flex;justify-content:space-between;gap:12px;margin-top:8px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:10px 10px;border-bottom:2px solid var(--line);font-weight:600}
+  td{padding:8px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+  td input,td select{padding:7px 9px;font-size:13px;border-radius:8px}
+  .crit{font-weight:700;font-size:11px;padding:3px 9px;border-radius:20px;display:inline-block;white-space:nowrap}
+  .c-critical{background:var(--red-soft);color:var(--red)}.c-high{background:var(--amber-soft);color:var(--amber)}
+  .c-medium{background:var(--accent-soft);color:var(--accent)}.c-low{background:#eef2f7;color:var(--muted)}
+  .iconbtn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 6px;border-radius:6px}
+  .iconbtn:hover{background:#f1f5f9;color:var(--red)}
+  .mapbtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink2);white-space:nowrap}
+  .mapbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .maprow td{background:#f8fafc;padding:16px}
+  .pa-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:720px){.pa-wrap{grid-template-columns:1fr}}
+  .pa-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .pa-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+  .pa-row input,.pa-row select{padding:6px 8px;font-size:12px}
+  .miniadd{border:1px dashed #cbd5e1;background:#fff;color:var(--accent);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer}
+  .miniadd:hover{background:var(--accent-soft)}
+
+  .empty{text-align:center;color:var(--muted);padding:18px}
+  .note{background:var(--accent-soft);border:1px solid #dbe6ff;border-radius:12px;padding:14px 16px;font-size:13px;color:var(--ink2);margin:16px 0}
+  .note b{color:var(--accent)}
+  .note.warn{background:var(--amber-soft);border-color:#f5d9b0}.note.warn b{color:var(--amber)}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:#eef2f7;color:var(--ink2);margin:0 6px 4px 0}
+  .pill.app{background:#eef6ff;color:var(--accent)}.pill.ppl{background:#eef7f1;color:var(--green)}
+
+  .imports{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 18px}
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  @media(max-width:720px){.stat-row{grid-template-columns:1fr 1fr}}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+  .stat .n{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .stat .l{font-size:12px;color:var(--muted);font-weight:500;margin-top:2px}
+
+  .bcp-sec{border:1px solid var(--line);border-radius:14px;margin-bottom:14px;overflow:hidden}
+  .bcp-sec h4{margin:0;padding:14px 18px;background:#f8fafc;font-size:14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;cursor:pointer}
+  .bcp-sec .body{padding:18px}
+  .bcp-sec .body p{margin:0 0 10px;font-size:14px;color:var(--ink2)}
+  .bcp-sec ul{margin:0 0 6px;padding-left:20px;font-size:14px;color:var(--ink2)} .bcp-sec li{margin-bottom:6px}
+  .seq-tier{border-left:3px solid var(--accent);padding:4px 0 4px 14px;margin-bottom:14px}
+  .seq-tier .t{font-weight:700;font-size:13px}
+
+  .scenario-card{border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;transition:.15s;background:#fff}
+  .scenario-card:hover{border-color:#cbd5e1}
+  .scenario-card.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .scenario-card .ico{font-size:24px;margin-bottom:8px}
+  .scenario-card .t{font-weight:700;font-size:14px;margin-bottom:3px}
+  .scenario-card .d{font-size:12px;color:var(--muted)}
+  .inject{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:#fff}
+  .inject .time{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+  .inject .ev{font-size:14px;font-weight:600;margin:4px 0 10px}
+  .rating{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .rating button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-weight:600;color:var(--ink2)}
+  .rating button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .addbtn{border:1px dashed #cbd5e1;background:#fff;color:var(--accent);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-top:10px}
+  .addbtn:hover{background:var(--accent-soft)}
+
+  /* research panel */
+  .research{border:1px solid #bcd0ff;background:linear-gradient(180deg,#f5f8ff,#ffffff);border-radius:14px;padding:18px;margin-bottom:22px}
+  .r-top{font-weight:700;font-size:15px}
+  .r-sub{font-size:13px;color:var(--muted);margin:4px 0 12px}
+  .r-row{display:flex;gap:8px;flex-wrap:wrap}
+  .r-row input[type=text],.r-row input[type=password]{flex:1;min-width:200px}
+  .r-tools{margin-top:10px;font-size:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .r-tools a{color:var(--accent);font-weight:600;cursor:pointer}
+  .r-tools span{color:var(--line)}
+  .r-box{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .import-tracks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:6px}
+  @media(max-width:820px){.import-tracks{grid-template-columns:1fr}}
+  .itrack{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;display:flex;flex-direction:column}
+  .it-h{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .it-d{font-size:12px;color:var(--muted);margin:6px 0 10px;flex:1}
+  .it-btns{display:flex;flex-direction:column;gap:6px}
+  .it-btns .btn{text-align:left}
+  .it-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:20px}
+  .it-tag.green{background:var(--green-soft);color:var(--green)}
+  .it-tag.amber{background:var(--amber-soft);color:var(--amber)}
+  .it-tag.blue{background:var(--accent-soft);color:var(--accent)}
+  /* recovery procedure cards */
+  .rec-card{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .rec-h{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f8fafc;cursor:pointer;flex-wrap:wrap}
+  .rec-name{font-weight:700;font-size:14px}
+  .rec-meta{font-size:12px;color:var(--muted)}
+  .rec-card.collapsed .rec-b{display:none}
+  .rec-b{padding:16px}
+  .rec-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+  @media(max-width:720px){.rec-grid{grid-template-columns:1fr}}
+  .rec-l{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
+  .rec-hint{display:block;font-size:11px;font-weight:400;color:var(--muted);margin:-2px 0 6px;line-height:1.45;text-transform:none;letter-spacing:0}
+  .field-hint{display:block;font-size:11px;font-weight:400;color:var(--muted);margin:0 0 6px;line-height:1.45}
+  .rec-b textarea{min-height:58px}
+  .rec-steps{min-height:128px}
+  .spof{font-size:11px;font-weight:700;color:var(--amber);background:var(--amber-soft);padding:3px 9px;border-radius:20px}
+  .dc-tbl td{padding:7px 10px}
+  .dc-sub{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:22px 0 8px}
+
+  /* vendor rows in mapping drawer */
+  .vend-wrap{margin-top:18px;border-top:1px dashed var(--line);padding-top:14px}
+  .vend-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap}
+  .vend-row input,.vend-row select{padding:6px 8px;font-size:12px}
+  .vend-row input:first-of-type{flex:1;min-width:110px}
+  .vend-row input:nth-of-type(2){flex:1.4;min-width:130px}
+
+  /* resilience analysis */
+  .score-wrap{display:flex;gap:22px;align-items:center;margin-bottom:22px;flex-wrap:wrap}
+  .score-ring{width:108px;height:108px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p,0)*1%),#eef2f7 0);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+  .score-ring::before{content:"";position:absolute;inset:11px;background:#fff;border-radius:50%}
+  .score-n{position:relative;font-size:32px;font-weight:800;line-height:1;letter-spacing:-.02em}
+  .score-l{position:relative;font-size:11px;color:var(--muted);font-weight:600;margin-top:1px}
+  .score-meta{flex:1;min-width:240px}
+  .score-band{font-weight:800;font-size:19px;letter-spacing:-.01em}
+  .score-d{font-size:13px;color:var(--muted);margin-top:5px;max-width:560px}
+  .finding{border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:13px 15px;margin-bottom:10px;background:#fff}
+  .finding.critical{border-left-color:var(--red)}
+  .finding.high{border-left-color:var(--amber)}
+  .finding.medium{border-left-color:var(--accent)}
+  .finding-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .sev-tag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:20px}
+  .sev-tag.critical{background:var(--red-soft);color:var(--red)}
+  .sev-tag.high{background:var(--amber-soft);color:var(--amber)}
+  .sev-tag.medium{background:var(--accent-soft);color:var(--accent)}
+  .finding-t{font-weight:700;font-size:14px}
+  .finding-d{font-size:13px;color:var(--ink2);margin-top:7px}
+  .finding-fix{font-size:13px;color:var(--ink2);margin-top:8px;background:#f8fafc;border-radius:8px;padding:8px 11px}
+  .finding-fix b{color:var(--green)}
+
+  .howto{display:flex;gap:11px;align-items:flex-start;background:#f8fafc;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:12px 15px;font-size:13px;color:var(--ink2);margin:0 0 22px;line-height:1.5}
+  .howto .ic{font-size:16px;flex-shrink:0}
+  .howto b{color:var(--ink)}
+  .howto ol{margin:6px 0 0;padding-left:18px}.howto li{margin-bottom:3px}
+
+  #printCover{display:none}
+  @media print{header.top,.steps,.navrow,.no-print,.imports,.research{display:none!important}
+    .panel{display:block!important}.card{box-shadow:none;border-color:#ddd;break-inside:avoid}body{background:#fff}
+    .maprow{display:table-row!important}
+    .rec-card .rec-b{display:block!important}.rec-card{break-inside:avoid}
+    #printCover{display:block!important;break-after:page;page-break-after:always;min-height:92vh}
+    body.plan-only #p-profile,body.plan-only #p-test,body.plan-only #p-aar{display:none!important}}
+</style>
+</head>
+<body>
+<div id="printCover"></div>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><div class="logo">◎</div><div>Continuity Builder<small>BIA → Analysis → BCP → Tabletop → AAR</small></div></div>
+    <div class="spacer"></div>
+    <button class="btn ghost sm no-print" onclick="exportSession()" title="Download this whole engagement (profile, BIA, plan, exercise, AAR) as a .json file you can back up or reopen later">💾 Save engagement</button>
+    <button class="btn ghost sm no-print" onclick="loadPrompt()" title="Open a .json engagement file you previously saved with 'Save engagement' — it restores everything where you left off">📂 Load engagement</button>
+    <input type="file" id="sessionFile" accept=".json,application/json" style="display:none" onchange="importSession(this)">
+    <div class="fw-badge"><span class="fw-dot"></span><span id="fwBadge">Private · ISO 22301 / 22317</span></div>
+  </div>
+</header>
+
+<div class="steps" id="steps"></div>
+
+<div class="wrap">
+<main>
+  <!-- STEP 1: PROFILE -->
+  <section class="panel show" id="p-profile">
+    <div class="card">
+      <h1>Start here — who are you planning for?</h1>
+      <p class="sub">Pick a sector. This sets the whole tool: the language, the frameworks, and the way functions are organized.</p>
+      <div class="howto no-print"><span class="ic">💡</span><div><b>How this tool works.</b> Five steps, left to right: describe your organization, review the impact analysis it builds, see the resilience gaps it finds, generate the plan, then pressure-test it. You can stop and export a finished plan at any point. <b>No spreadsheets required</b> — just make selections and click the button at the bottom of each step. Everything saves in your browser automatically.</div></div>
+      <div class="sector-cards" id="sectorCards">
+        <div class="sector-card on" data-sector="private" onclick="selectSector('private')">
+          <div class="sc-top"><span class="sc-ico">🏢</span> Private sector</div>
+          <div class="sc-fw">ISO 22301 / 22317</div>
+          <div class="sc-d">Organized by <b>departments</b> and <b>business processes</b>. Recovery objectives follow ISO good practice.</div>
+        </div>
+        <div class="sector-card" data-sector="public" onclick="selectSector('public')">
+          <div class="sc-top"><span class="sc-ico">🏛️</span> Public sector</div>
+          <div class="sc-fw">FEMA CPG 101 · COOP</div>
+          <div class="sc-d">Organized by FEMA <b>Community Lifelines</b> and <b>Mission Essential Functions</b>. RTOs follow the FEMA 12-hour / 30-day standard.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h1 id="profileTitle">Organization profile</h1>
+      <p class="sub">Tell the tool about the organization once. It pre-builds the impact analysis, plan, exercise, and after-action report from here.</p>
+
+      <div class="research">
+        <div class="r-top">📥 Build it from your own data <span class="it-tag blue" id="importMode">optional</span></div>
+        <p class="r-sub" id="importIntro">Have spreadsheets or an existing plan already? Load them and the tool fills itself in. Otherwise just skip this and build by clicking below. Everything runs in your browser — nothing is uploaded anywhere.</p>
+
+        <div class="import-tracks">
+          <div class="itrack">
+            <div class="it-h">1 · Spreadsheets &amp; lists <span class="it-tag green">most reliable</span></div>
+            <p class="it-d" id="itStructDesc">Excel or CSV. Each file is auto-matched to your functions by name.</p>
+            <div class="it-btns">
+              <button class="btn ghost sm" id="upBtnBIA" onclick="pickFile('upBIA')">⤒ Functions / BIA sheet</button>
+              <button class="btn ghost sm" id="upBtnPeople" onclick="pickFile('upPeople')">⤒ Staff roster → people</button>
+              <button class="btn ghost sm" id="upBtnApps" onclick="pickFile('upApps')">⤒ Asset / CMDB list → apps</button>
+              <button class="btn ghost sm" id="upBtnVendors" onclick="pickFile('upVendors')">⤒ Vendor list → vendors</button>
+            </div>
+          </div>
+
+          <div class="itrack">
+            <div class="it-h">2 · An existing plan or document <span class="it-tag amber">draft assist</span></div>
+            <p class="it-d" id="itScanDesc">Word, PDF, or text. The tool reads the text and pre-fills suggested functions, systems and vendors for you to correct. Best-effort keyword scan — review everything it adds.</p>
+            <div class="it-btns">
+              <button class="btn ghost sm" onclick="pickFile('upDoc')">⤒ Scan a document (.docx · .pdf · .txt)</button>
+            </div>
+            <div id="scanStatus"></div>
+          </div>
+
+          <div class="itrack">
+            <div class="it-h">3 · Let any AI read your documents <span class="it-tag blue">no API key</span></div>
+            <p class="it-d">Best for messy narrative plans. Copy the instruction, hand it plus your documents to Claude or any assistant, and paste the JSON it gives back. No key, nothing installed.</p>
+            <div class="it-btns">
+              <button class="btn ghost sm" onclick="copyPrompt()">⧉ Copy the instruction</button>
+              <button class="btn ghost sm" onclick="toggleBox('pasteBox')">Paste AI result</button>
+              <button class="btn ghost sm" onclick="document.getElementById('profileJSON').click()">Import profile (.json)</button>
+              <input type="file" id="profileJSON" accept=".json,application/json" style="display:none" onchange="importProfile(this)">
+            </div>
+            <div id="pasteBox" class="r-box" style="display:none">
+              <textarea id="pasteJSON" placeholder="Paste the AI's JSON response here..." style="min-height:90px"></textarea>
+              <div class="r-row" style="margin-top:8px"><button class="btn primary sm" onclick="fillFromPaste()">Fill from pasted text</button></div>
+            </div>
+          </div>
+        </div>
+        <div id="researchStatus"></div>
+
+        <input type="file" id="upPeople" accept=".csv,.xlsx,.xls" style="display:none" onchange="onUpload('people',this)">
+        <input type="file" id="upApps" accept=".csv,.xlsx,.xls" style="display:none" onchange="onUpload('apps',this)">
+        <input type="file" id="upVendors" accept=".csv,.xlsx,.xls" style="display:none" onchange="onUpload('vendors',this)">
+        <input type="file" id="upBIA" accept=".csv,.xlsx,.xls" style="display:none" onchange="onUpload('bia',this)">
+        <input type="file" id="upDoc" accept=".docx,.pdf,.txt,.md,.doc" style="display:none" onchange="onScanDoc(this)">
+      </div>
+
+      <div class="grid2">
+        <div><label class="fld">Organization / agency name</label><input type="text" id="orgName" placeholder="e.g. City of Springfield"></div>
+        <div><label class="fld">Plan owner / continuity coordinator</label><input type="text" id="owner" placeholder="e.g. Jane Doe, Head of Resilience"></div>
+      </div>
+
+      <div style="margin-top:16px;max-width:520px"><label class="fld">Prepared by (firm / consultant) <span style="font-weight:400;color:var(--muted)">— appears on the exported cover page</span></label><input type="text" id="preparedBy" placeholder="e.g. The Homeland Security Consulting Group, LLC" onchange="S.preparedBy=this.value;save()"></div>
+
+      <div id="industryBlock">
+        <h3>Industry</h3>
+        <select id="industry"></select>
+      </div>
+
+      <h3>Organization size</h3>
+      <div class="chips" id="sizeChips"></div>
+
+      <h3 id="groupLabel">Departments / business units <span class="hint">— pick what applies (drives the analysis)</span></h3>
+      <div class="chips" id="deptChips"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;max-width:420px">
+        <input type="text" id="customDept" placeholder="Add your own (e.g. Government Affairs)" onkeydown="if(event.key==='Enter'){addCustomDept();event.preventDefault();}">
+        <button class="btn ghost sm" onclick="addCustomDept()">+ Add</button>
+      </div>
+
+      <h3>Regulations &amp; standards in scope</h3>
+      <div class="chips" id="regChips"></div>
+
+      <div class="note" id="fwNote"></div>
+
+      <div class="navrow">
+        <span></span>
+        <button class="btn primary" onclick="buildBIA()" id="biaBtn">Generate Business Impact Analysis →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: BIA -->
+  <section class="panel" id="p-bia">
+    <div class="card">
+      <h1 id="biaTitle">Business Impact Analysis</h1>
+      <p class="sub" id="biaSub"></p>
+      <div class="howto no-print"><span class="ic">💡</span><div><b>How this step works.</b> Each row is a function the tool pre-filled from your profile. For each one, set how critical it is, its <b>RTO</b> (how fast it must be back) and <b>RPO</b> (how much data you can afford to lose), and the impact if it's down. Click the <b>mapping button</b> on any row to assign the people and systems behind it — that's what powers the gap analysis. Add or remove rows freely, then click Generate at the bottom.</div></div>
+
+      <div class="imports no-print">
+        <button class="btn ghost sm" id="impPeopleBtn" onclick="document.getElementById('peopleCSV').click()">⤒ Import staff roster (Excel / CSV)</button>
+        <button class="btn ghost sm" id="impAppsBtn" onclick="document.getElementById('appsCSV').click()">⤒ Import CMDB / applications (Excel / CSV)</button>
+        <button class="btn ghost sm" id="impVendorsBtn" onclick="document.getElementById('vendorsCSV').click()">⤒ Import vendor list (Excel / CSV)</button>
+        <input type="file" id="peopleCSV" accept=".csv,.xlsx,.xls" style="display:none" onchange="importPeople(this)">
+        <input type="file" id="appsCSV" accept=".csv,.xlsx,.xls" style="display:none" onchange="importApps(this)">
+        <input type="file" id="vendorsCSV" accept=".csv,.xlsx,.xls" style="display:none" onchange="importVendors(this)">
+      </div>
+      <div id="importMsg"></div>
+
+      <div id="biaGuide"></div>
+
+      <div class="note" style="margin-top:0">
+        <b>What each column means.</b>
+        <b>Criticality</b> — how damaging an outage is (Critical → Low).
+        <b>RTO</b> (Recovery Time Objective) — how quickly the function must be back.
+        <b>RPO</b> (Recovery Point Objective) — how much data or work you can afford to lose (the gap back to your last good backup).
+        <b>Impact if down</b> — what actually goes wrong when it stops.
+        <b>Mapping (👤 🗄 🤝)</b> — click it to record the people, systems, and vendors behind the function; that's what powers the resilience analysis.
+      </div>
+
+      <div class="stat-row" id="biaStats"></div>
+      <div style="overflow-x:auto">
+        <table id="biaTable">
+          <thead id="biaHead"></thead>
+          <tbody id="biaBody"></tbody>
+        </table>
+      </div>
+      <button class="addbtn no-print" onclick="addBIARow()">+ Add function / process</button>
+      <div class="navrow">
+        <button class="btn ghost" onclick="go('profile')">← Profile</button>
+        <button class="btn primary" onclick="buildAnalysis()">Analyze resilience →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3: ANALYSIS -->
+  <section class="panel" id="p-analysis">
+    <div class="card">
+      <h1>Resilience analysis</h1>
+      <p class="sub" id="anaSub"></p>
+      <div class="howto no-print"><span class="ic">💡</span><div><b>How this step works.</b> The tool reads your impact analysis and flags the weaknesses a plan on paper hides: single points of failure, people or systems stretched across too many critical functions, and recovery targets that nothing actually backs up. To fix a finding, go <b>back to the BIA</b> and map an owner, backup, or system. At the bottom, rate each threat in the <b>risk register</b> (likelihood × impact) to complete your risk assessment. Then generate the plan.</div></div>
+      <div id="anaContent"></div>
+      <div class="navrow">
+        <button class="btn ghost" onclick="go('bia')">← BIA</button>
+        <button class="btn primary" onclick="buildBCP()">Generate Continuity Plan →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4: BCP -->
+  <section class="panel" id="p-bcp">
+    <div class="card">
+      <h1 id="bcpTitle">Business Continuity Plan</h1>
+      <p class="sub" id="bcpSub"></p>
+      <div class="howto no-print"><span class="ic">💡</span><div><b>How this step works.</b> This is your full plan, generated from everything above. <b>Click any section heading</b> to expand or collapse it. Fill in the document-control, approvals, and sign-off fields at the top, and edit any recovery procedure inline. When it's ready, hit <b>⤓ Export plan (PDF)</b> below — you don't have to run an exercise first. Or run a tabletop to pressure-test it before you finalize.</div></div>
+      <div id="bcpContent"></div>
+      <div class="navrow">
+        <button class="btn ghost" onclick="go('analysis')">← Analysis</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn ghost" onclick="exportPlan()">⤓ Export plan (PDF)</button>
+          <button class="btn primary" onclick="buildTest()">Run a Tabletop Exercise →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4: TEST -->
+  <section class="panel" id="p-test">
+    <div class="card">
+      <h1>Tabletop exercise</h1>
+      <p class="sub">Pick a scenario. The tool drops timed injects against your plan. Record decisions and flag gaps — they feed straight into the After Action Report.</p>
+      <div class="howto no-print"><span class="ic">💡</span><div><b>How this step works (optional).</b> A tabletop is a talk-through drill. Pick a scenario and the tool throws timed events at your actual plan. In each box, type what your team would decide — and be honest about anything that would break, stall, or depend on one unavailable person. Those notes become corrective actions in the After Action Report. This step is optional; you can export the plan without it.</div></div>
+      <div class="grid3" id="scenarioGrid"></div>
+      <div id="exerciseArea"></div>
+      <div class="navrow">
+        <button class="btn ghost" onclick="go('bcp')">← Plan</button>
+        <button class="btn primary" id="toAARBtn" style="display:none" onclick="buildAAR()">Generate After Action Report →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 5: AAR -->
+  <section class="panel" id="p-aar">
+    <div class="card">
+      <h1 id="aarTitle">After Action Report</h1>
+      <p class="sub" id="aarSub"></p>
+      <div class="howto no-print"><span class="ic">💡</span><div><b>How this step works.</b> The tool drafted this report from your exercise. Set the capability rating, edit what worked and what needs improvement, and assign each corrective action an owner and a due date. When you're done, <b>⤓ Export full package</b> prints everything — profile, BIA, analysis, plan, exercise, and this report — as one PDF.</div></div>
+      <div id="aarContent"></div>
+      <div class="navrow no-print">
+        <button class="btn ghost" onclick="go('test')">← Exercise</button>
+        <button class="btn primary" onclick="window.print()">⤓ Export full package (PDF)</button>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>
+/* ============ KNOWLEDGE BASE ============ */
+const SIZES=["1–50","51–250","251–1,000","1,001–5,000","5,001–10,000","10,001–50,000","50,000+"];
+const LARGE_SIZES=["1,001–5,000","5,001–10,000","10,001–50,000","50,000+"];
+
+const SECTOR_CFG={
+  private:{fw:"ISO 22301 / 22317", label:"Private",
+    groupLabelHTML:'Departments / business units <span class="hint">— pick what applies (drives the analysis)</span>',
+    groupCol:"Department", funcCol:"Critical business process",
+    biaTitle:"Business Impact Analysis", planTitle:"Business Continuity Plan",
+    mef:"critical business processes"},
+  public:{fw:"FEMA CPG 101 · COOP", label:"Public",
+    groupLabelHTML:'FEMA Community Lifelines <span class="hint">— the lifelines your agency supports</span>',
+    groupCol:"Community Lifeline", funcCol:"Mission Essential Function (MEF)",
+    biaTitle:"Mission Essential Functions &amp; Impact Analysis", planTitle:"Continuity of Operations (COOP) Plan",
+    mef:"Mission Essential Functions"}
+};
+
+const INDUSTRIES={
+  technology:{label:"Technology / SaaS",
+    depts:["Engineering","Product","Cloud/Infra (SRE)","Customer Support","Sales","Marketing","Security","Legal","HR","Finance","Facilities"],
+    funcs:[
+      ["Cloud/Infra (SRE)","Production platform / hosting",1,0,"Critical","Customer-facing outage, SLA breach, revenue loss"],
+      ["Cloud/Infra (SRE)","CI/CD & deployment pipeline",24,4,"High","No fixes or releases can ship"],
+      ["Engineering","Source control & build systems",8,1,"High","Development halts, no incident hotfixes"],
+      ["Customer Support","Ticketing & customer comms",4,1,"High","Customers in the dark, churn risk"],
+      ["Security","SOC / threat monitoring",1,0,"Critical","Blind to active attacks"],
+      ["Sales","CRM & quoting",24,8,"Medium","Deals stall, pipeline data at risk"],
+      ["Finance","Billing & invoicing",24,12,"High","Cash flow interruption"],
+      ["HR","Payroll",72,24,"Medium","Staff pay delayed"]]},
+  healthcare:{label:"Healthcare / Hospital",
+    depts:["Clinical Care","Emergency Dept","Pharmacy","Lab/Diagnostics","Medical Records (EHR)","IT","Facilities","Supply Chain","Billing","Security"],
+    funcs:[
+      ["Emergency Dept","Emergency patient care",0,0,"Critical","Direct risk to life, diversion of patients"],
+      ["Medical Records (EHR)","Electronic health records access",1,0,"Critical","Clinicians blind to patient history & meds"],
+      ["Pharmacy","Medication dispensing",2,0,"Critical","Treatment delays, patient harm"],
+      ["Lab/Diagnostics","Lab results & imaging",4,1,"High","Diagnosis & treatment delays"],
+      ["Supply Chain","Medical supplies & blood",8,2,"High","Procedures cancelled"],
+      ["Facilities","Power, HVAC, medical gas",0,0,"Critical","Life-support and sterile environments fail"],
+      ["Billing","Claims & revenue cycle",72,24,"Medium","Delayed reimbursement"],
+      ["Security","Access control & patient safety",2,0,"High","Safety and compliance exposure"]]},
+  finance:{label:"Financial Services / Banking",
+    depts:["Trading","Payments","Core Banking","Risk & Compliance","Customer Channels","IT","Cyber Security","Treasury","Operations","HR"],
+    funcs:[
+      ["Payments","Payment processing & settlement",1,0,"Critical","Failed transactions, regulatory breach"],
+      ["Core Banking","Core ledger & account access",2,0,"Critical","Customers locked out of funds"],
+      ["Trading","Trade execution & market data",1,0,"Critical","Market exposure, financial loss"],
+      ["Cyber Security","Fraud monitoring & SOC",1,0,"Critical","Fraud losses, undetected breach"],
+      ["Customer Channels","Online & mobile banking",2,0,"High","Customer trust & reputational damage"],
+      ["Risk & Compliance","Regulatory reporting",24,4,"High","Fines, sanctions"],
+      ["Treasury","Liquidity & cash management",8,1,"High","Funding and solvency risk"],
+      ["Operations","Reconciliation & clearing",12,2,"Medium","Settlement backlog"]]},
+  manufacturing:{label:"Manufacturing / Industrial",
+    depts:["Production","Supply Chain","Warehouse/Logistics","Quality","Maintenance","Engineering","IT/OT","Sales","Finance","EHS"],
+    funcs:[
+      ["Production","Production line / plant control (ICS)",4,1,"Critical","Output halts, contractual penalties"],
+      ["Supply Chain","Inbound materials & supplier orders",24,8,"High","Line stoppage from material shortage"],
+      ["Warehouse/Logistics","Shipping & fulfillment",12,4,"High","Orders undelivered, revenue impact"],
+      ["Maintenance","Equipment maintenance systems",24,8,"Medium","Unplanned downtime risk"],
+      ["Quality","Quality control & traceability",8,2,"High","Compliance & recall exposure"],
+      ["IT/OT","SCADA / MES systems",4,1,"Critical","Loss of plant visibility & control"],
+      ["EHS","Safety & environmental monitoring",2,0,"High","Worker safety, regulatory exposure"],
+      ["Finance","Order-to-cash",48,24,"Medium","Delayed revenue"]]},
+  retail:{label:"Retail / E-commerce",
+    depts:["Stores","E-commerce","Payments/POS","Supply Chain","Distribution","Customer Service","IT","Marketing","Finance","Loss Prevention"],
+    funcs:[
+      ["Payments/POS","Point-of-sale & payment capture",1,0,"Critical","Cannot transact, immediate revenue loss"],
+      ["E-commerce","Online storefront & checkout",2,0,"Critical","Direct sales loss, cart abandonment"],
+      ["Distribution","Order fulfillment & shipping",12,4,"High","Undelivered orders, customer churn"],
+      ["Supply Chain","Inventory & replenishment",24,8,"High","Stockouts and overstock"],
+      ["Customer Service","Contact center & returns",8,2,"Medium","Customer dissatisfaction"],
+      ["Loss Prevention","Surveillance & access control",4,1,"High","Theft and safety exposure"],
+      ["IT","Network & store connectivity",2,0,"High","Stores go dark"],
+      ["Finance","Reconciliation & settlement",48,24,"Low","Reporting delay"]]},
+  education:{label:"Education / University",
+    depts:["Academics","IT","Student Services","Campus Safety","Facilities","Research","HR","Finance","Housing","Health Services"],
+    funcs:[
+      ["Campus Safety","Emergency notification & security",0,0,"Critical","Student & staff safety"],
+      ["IT","Learning management & network",4,1,"High","Teaching and operations halt"],
+      ["Student Services","Enrollment & student records",24,8,"Medium","Administrative disruption"],
+      ["Health Services","Student health & counseling",4,1,"High","Student wellbeing risk"],
+      ["Facilities","Power, heating, building access",2,0,"High","Campus unusable"],
+      ["Research","Lab continuity & data",8,2,"Medium","Loss of research data/samples"],
+      ["Finance","Payroll & financial aid",48,24,"Medium","Staff pay & student aid delayed"]]},
+  energy:{label:"Energy / Utilities",
+    depts:["Generation","Transmission/Distribution","Control Center","Field Operations","Cyber/OT Security","Customer Service","IT","Compliance","Emergency Response","Finance"],
+    funcs:[
+      ["Control Center","Grid control / SCADA",0,0,"Critical","Loss of grid stability, blackouts"],
+      ["Cyber/OT Security","OT security monitoring",1,0,"Critical","Attack on critical infrastructure"],
+      ["Transmission/Distribution","Outage management",1,0,"Critical","Extended customer outages"],
+      ["Field Operations","Crew dispatch & restoration",2,0,"High","Slow restoration of service"],
+      ["Generation","Plant operations",2,0,"Critical","Supply shortfall"],
+      ["Compliance","NERC CIP reporting",24,8,"High","Regulatory penalties"],
+      ["Customer Service","Outage reporting & comms",4,1,"Medium","Customer frustration, call volume"],
+      ["Emergency Response","Storm & incident response",1,0,"High","Public safety during events"]]}
+};
+
+/* ---- Universal business functions (offered on top of industry-specific list) ---- */
+const EXTRA_DEPTS=["Executive Leadership","Strategy","Operations","Communications / PR","Legal","Procurement / Sourcing","Information Technology","Human Resources","Finance / Accounting","Marketing","Sales","Customer Success","Facilities","Risk & Compliance","Physical Security","Supply Chain","Data & Analytics","Internal Audit","Investor Relations","R&D"];
+const SYN={it:"information technology","it/ot":"information technology",hr:"human resources",comms:"communications",ops:"operations",pr:"communications"};
+function normDept(s){let n=String(s).toLowerCase().replace(/\(.*?\)/g,"").split(/[\/&]/)[0].trim();return SYN[n]||n;}
+
+/* ---- PUBLIC SECTOR: FEMA Community Lifelines + Mission Essential Functions ---- */
+const LIFELINES=["Safety & Security","Health & Medical","Food, Hydration, Shelter","Energy (Power & Fuel)","Communications","Transportation","Hazardous Materials","Water Systems","Continuity of Government"];
+const GOV_FUNCS=[
+  ["Safety & Security","911 / dispatch & first responder coordination",0,0,"Critical","Direct threat to public safety"],
+  ["Safety & Security","Emergency Operations Center (EOC) activation",0,0,"Critical","Loss of coordinated response capability"],
+  ["Safety & Security","Law enforcement & site access control",2,0,"High","Security and public order degraded"],
+  ["Health & Medical","Public health & medical surge / EMS",1,0,"Critical","Community health risk, loss of life"],
+  ["Health & Medical","Fatality management",12,8,"Medium","Public health and dignity impact"],
+  ["Food, Hydration, Shelter","Mass care & sheltering",6,4,"High","Displaced residents unprotected"],
+  ["Food, Hydration, Shelter","Food & water distribution",6,4,"High","Basic survival needs unmet"],
+  ["Energy (Power & Fuel)","Power restoration coordination",2,0,"Critical","Cascading failure across all lifelines"],
+  ["Energy (Power & Fuel)","Responder fuel supply",4,1,"High","Response capability stalls"],
+  ["Communications","Public alert & warning (IPAWS / WEA)",1,0,"Critical","Public unaware of life-safety guidance"],
+  ["Communications","Interoperable responder communications",1,0,"Critical","Responders cannot coordinate"],
+  ["Communications","Government network & data (IT)",4,1,"High","Service delivery & response degraded"],
+  ["Transportation","Roadway clearance & evacuation routing",2,0,"Critical","Responders & evacuees cannot move"],
+  ["Transportation","Mass transit continuity",12,8,"Medium","Residents stranded"],
+  ["Hazardous Materials","HazMat response & containment",1,0,"Critical","Toxic exposure to the public"],
+  ["Water Systems","Drinking water continuity",2,0,"Critical","Public health emergency"],
+  ["Water Systems","Wastewater & sanitation",6,2,"High","Disease and contamination risk"],
+  ["Continuity of Government","Orders of succession & leadership",0,0,"Critical","No decision authority"],
+  ["Continuity of Government","Emergency procurement & payroll",12,12,"Medium","Responder pay & resource purchasing"],
+  ["Continuity of Government","Vital records access",12,4,"High","Cannot execute essential functions"]];
+
+const REGS_PRIVATE=["ISO 22301","ISO 22317 (BIA)","NIST SP 800-34","SOC 2","GDPR"];
+const REGS_BY_INDUSTRY={
+  technology:["SOC 2","ISO 27001","GDPR","CCPA"],
+  healthcare:["HIPAA","HITECH","Joint Commission EM","CMS Emergency Prep"],
+  finance:["SOX","GLBA","PCI-DSS","FFIEC","DORA","Basel III"],
+  manufacturing:["ISO 9001","OSHA","IEC 62443 (OT)","EPA"],
+  retail:["PCI-DSS","CCPA","GDPR"],
+  education:["FERPA","Clery Act","NFPA 1600"],
+  energy:["NERC CIP","FERC","NFPA 1600","TSA Pipeline Security"]};
+const REGS_PUBLIC=["FEMA CPG 101","FCD 1 / FCD 2","NIMS / ICS","Continuity Guidance Circular","NFPA 1600","Stafford Act"];
+
+const SCENARIOS=[
+  {id:"ransom",ico:"🔒",t:"Ransomware attack",d:"Core systems encrypted, ransom demand",hits:["IT","Cyber","SCADA","EHR","Core","POS","platform","network","SOC","records","data","communications","dispatch"]},
+  {id:"power",ico:"⚡",t:"Extended power outage",d:"Grid failure, 18+ hours, generators degrading",hits:["Power","Energy","Facilities","plant","Production","Control","HVAC","building","network","Water"]},
+  {id:"weather",ico:"🌀",t:"Severe weather event",d:"Hurricane/flood forcing site evacuation",hits:["Facilities","Field","Distribution","Supply","Production","building","Emergency","Shelter","Transportation","Mass care","evacuation"]},
+  {id:"breach",ico:"🚪",t:"Physical security breach",d:"Unauthorized intrusion at a critical site",hits:["Security","access","Safety","Facilities","Control","Loss","EOC"]},
+  {id:"pandemic",ico:"🦠",t:"Pandemic / mass absence",d:"40% of staff unavailable for weeks",hits:["HR","Payroll","Support","Care","Operations","Production","Service","Health","Medical","succession"]},
+  {id:"supply",ico:"📦",t:"Supply chain failure",d:"Critical vendor / supplier collapses",hits:["Supply","Distribution","Warehouse","Pharmacy","materials","Procurement","Food","fuel","water"]}];
+
+/* ============ STATE ============ */
+let S={sector:"private",orgName:"",owner:"",preparedBy:"",industry:"technology",size:"251–1,000",
+  depts:[],customDepts:[],regs:[],bia:[],bcp:null,scenario:null,injects:[],aar:null,unmappedApps:[],risk:{}};
+const CRIT_ORDER={Critical:0,High:1,Medium:2,Low:3};
+const STEPS=[["profile","Profile","Org inputs"],["bia","BIA","Impact analysis"],["analysis","Analysis","Resilience gaps"],["bcp","Plan","Continuity strategies"],["test","Test","Tabletop exercise"],["aar","AAR","After action"]];
+let stepIdx=0, maxStep=0, openRow=-1;
+
+/* ============ INIT ============ */
+function init(){
+  document.getElementById("steps").innerHTML=STEPS.map((s,i)=>
+    `<div class="step ${i===0?'active':''}" id="st-${s[0]}" onclick="tryGo('${s[0]}')">
+      <div class="num">${i+1}</div><div class="lbl">${s[1]}<small>${s[2]}</small></div></div>`).join("");
+  document.getElementById("industry").innerHTML=Object.entries(INDUSTRIES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
+  document.getElementById("industry").value=S.industry;
+  document.getElementById("industry").onchange=e=>{S.industry=e.target.value;S.depts=[];renderDepts();renderRegs();save();};
+  document.getElementById("sizeChips").innerHTML=SIZES.map(s=>`<div class="chip ${s===S.size?'on':''}" onclick="pickSize('${s}',this)">${s}</div>`).join("");
+  applySector(); renderDepts(); renderRegs();
+  load();
+}
+function selectSector(sec){
+  if(S.sector!==sec){S.sector=sec;S.depts=[];S.bia=[];}
+  document.querySelectorAll("#sectorCards .sector-card").forEach(c=>c.classList.toggle("on",c.dataset.sector===sec));
+  if(sec==="public")S.industry="government"; else if(S.industry==="government")S.industry="technology";
+  applySector(); renderDepts(); renderRegs(); save();
+}
+function applySector(){
+  const c=SECTOR_CFG[S.sector];
+  document.getElementById("fwBadge").textContent=c.label+" · "+c.fw;
+  document.getElementById("groupLabel").innerHTML=c.groupLabelHTML;
+  document.getElementById("industryBlock").style.display=S.sector==="public"?"none":"block";
+  document.querySelectorAll("#sectorCards .sector-card").forEach(x=>x.classList.toggle("on",x.dataset.sector===S.sector));
+  const note=document.getElementById("fwNote");
+  if(S.sector==="public"){
+    note.innerHTML="<b>Public-sector mode.</b> Built to FEMA CPG 101 and Federal Continuity Directives. Functions are <b>Mission Essential Functions</b> mapped to FEMA <b>Community Lifelines</b>, with orders of succession, delegations of authority, and the 12-hour / 30-day recovery standard.";
+  }else{
+    note.innerHTML="<b>Private-sector mode.</b> Aligned to ISO 22301 (BCMS) and ISO 22317 (BIA). Functions are <b>business processes</b> grouped by department, with recovery objectives, continuity strategies, and a test-and-review cycle.";
+  }
+  configureSectorUI();
+}
+/* ---- Show/hide & relabel the data layers that differ between sectors ----
+   Public sector follows FEMA COOP: no CMDB tiers, no commercial "vendors".
+   The equivalents are vital records/systems and personnel succession. */
+function configureSectorUI(){
+  const pub=S.sector==="public";
+  const show=(id,on)=>{const e=document.getElementById(id);if(e)e.style.display=on?"":"none";};
+  const html=(id,h)=>{const e=document.getElementById(id);if(e)e.innerHTML=h;};
+  // profile import panel
+  show("upBtnApps",!pub); show("upBtnVendors",!pub);
+  html("upBtnBIA",pub?"⤒ Mission Essential Functions sheet":"⤒ Functions / BIA sheet");
+  html("upBtnPeople",pub?"⤒ Personnel / positions roster":"⤒ Staff roster → people");
+  html("itStructDesc",pub
+    ?"Excel or CSV. A list of your Mission Essential Functions, or the personnel and positions behind them."
+    :"Excel or CSV. Each file is auto-matched to your functions by name.");
+  html("itScanDesc",pub
+    ?"Word, PDF, or text — e.g. an existing COOP or EOP. The tool reads it and pre-fills suggested Mission Essential Functions for you to correct. Best-effort keyword scan."
+    :"Word, PDF, or text. The tool reads the text and pre-fills suggested functions, systems and vendors for you to correct. Best-effort keyword scan — review everything it adds.");
+  html("importIntro",pub
+    ?"Have a COOP, an EOP, or a list of essential functions already? Load it and the tool fills itself in. Otherwise just skip this and build by clicking below. Everything runs in your browser — nothing is uploaded anywhere."
+    :"Have spreadsheets or an existing plan already? Load them and the tool fills itself in. Otherwise just skip this and build by clicking below. Everything runs in your browser — nothing is uploaded anywhere.");
+  // BIA-step imports
+  show("impAppsBtn",!pub); show("impVendorsBtn",!pub);
+  html("impPeopleBtn",pub?"⤒ Import personnel / positions (Excel / CSV)":"⤒ Import staff roster (Excel / CSV)");
+}
+function pickSize(s,el){S.size=s;document.querySelectorAll("#sizeChips .chip").forEach(c=>c.classList.remove("on"));el.classList.add("on");save();}
+function groupsFor(){return S.sector==="public"?LIFELINES:INDUSTRIES[S.industry].depts;}
+function libFor(){return S.sector==="public"?GOV_FUNCS:INDUSTRIES[S.industry].funcs;}
+function renderDepts(){
+  const base=groupsFor();
+  if(!S.depts.length)S.depts=[...base];
+  // universal pool (private only), deduped against the industry list and customs
+  let extra=[];
+  if(S.sector!=="public"){
+    const have=new Set([...base,...S.customDepts].map(normDept));
+    extra=EXTRA_DEPTS.filter(x=>!have.has(normDept(x)));
+  }
+  const chip=x=>`<div class="chip ${S.depts.includes(x)?'on':''}" onclick="toggleDept(this.dataset.v,this)" data-v="${esc(x)}">${x}</div>`;
+  let html=base.map(chip).join("");
+  if(extra.length)html+=`<div style="flex-basis:100%;height:0"></div><div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:6px 0 2px;flex-basis:100%">More business functions</div>`+extra.map(chip).join("");
+  if(S.customDepts.length)html+=`<div style="flex-basis:100%;height:0"></div>`+S.customDepts.map(x=>`<div class="chip ${S.depts.includes(x)?'on':''}" onclick="toggleDept(this.dataset.v,this)" data-v="${esc(x)}" style="border-style:dashed">${x} <span onclick="event.stopPropagation();removeCustomDept(this.parentNode.dataset.v)" style="margin-left:4px;color:var(--muted)">✕</span></div>`).join("");
+  document.getElementById("deptChips").innerHTML=html;
+}
+function toggleDept(x,el){if(S.depts.includes(x))S.depts=S.depts.filter(z=>z!==x);else S.depts.push(x);renderDepts();save();}
+function addCustomDept(){
+  const inp=document.getElementById("customDept"),v=inp.value.trim();if(!v)return;
+  const all=[...groupsFor(),...S.customDepts].map(normDept);
+  if(!all.includes(normDept(v))){S.customDepts.push(v);}
+  if(!S.depts.includes(v))S.depts.push(v);
+  inp.value="";renderDepts();save();
+}
+function removeCustomDept(x){S.customDepts=S.customDepts.filter(z=>z!==x);S.depts=S.depts.filter(z=>z!==x);renderDepts();save();}
+function renderRegs(){
+  let set=S.sector==="public"?REGS_PUBLIC.slice():REGS_PRIVATE.concat(REGS_BY_INDUSTRY[S.industry]||[]);
+  set=[...new Set(set)];
+  if(!S.regs.length)S.regs=set.slice(0,S.sector==="public"?set.length:5);
+  document.getElementById("regChips").innerHTML=set.map(x=>`<div class="chip ${S.regs.includes(x)?'on':''}" onclick="toggleReg(this.dataset.v,this)" data-v="${esc(x)}">${x}</div>`).join("");
+}
+function toggleReg(x,el){if(S.regs.includes(x))S.regs=S.regs.filter(z=>z!==x);else S.regs.push(x);el.classList.toggle("on");save();}
+
+/* ============ NAV ============ */
+function go(id){
+  stepIdx=STEPS.findIndex(s=>s[0]===id);maxStep=Math.max(maxStep,stepIdx);
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("show"));
+  document.getElementById("p-"+id).classList.add("show");
+  STEPS.forEach((s,i)=>{const el=document.getElementById("st-"+s[0]);el.classList.toggle("active",i===stepIdx);el.classList.toggle("done",i<maxStep);});
+  window.scrollTo({top:0,behavior:"smooth"});save();
+}
+function tryGo(id){const i=STEPS.findIndex(s=>s[0]===id);if(i<=maxStep)go(id);}
+
+/* ============ HELPERS ============ */
+function fmtH(h){h=Number(h);if(h===0)return"Immediate";if(h<1)return"<1 hr";if(h<24)return h+" hr";const d=h/24;return d===1?"1 day":d+" days";}
+function critClass(c){return"c-"+c.toLowerCase();}
+function esc(s){return String(s).replace(/"/g,"&quot;");}
+function exportPlan(){
+  // Print just the plan package (BIA + Analysis + Plan) — skip the exercise & AAR
+  document.body.classList.add("plan-only");
+  const clean=()=>{document.body.classList.remove("plan-only");window.removeEventListener("afterprint",clean);};
+  window.addEventListener("afterprint",clean);
+  setTimeout(()=>{window.print();},60);
+  setTimeout(clean,4000);
+}
+
+/* ============ STEP 2: BIA ============ */
+function buildBIA(){
+  S.orgName=document.getElementById("orgName").value||(S.sector==="public"?"Your agency":"Your organization");
+  S.owner=document.getElementById("owner").value||"Continuity Coordinator";
+  if(!S.bia.length || S.bia._key!==(S.sector+S.industry)){
+    const lib=libFor();
+    let rows=[];
+    S.depts.forEach(g=>{
+      const fs=lib.filter(f=>f[0]===g);
+      if(fs.length)fs.forEach(f=>rows.push({dept:f[0],func:f[1],rto:f[2],rpo:f[3],crit:f[4],impact:f[5],people:[],apps:[],vendors:[]}));
+      else rows.push({dept:g,func:(S.sector==="public"?"Essential function — "+g:"Core "+g+" operations"),rto:S.sector==="public"?12:24,rpo:8,crit:S.sector==="public"?"High":"Medium",impact:"Operations in "+g+" disrupted",people:[],apps:[],vendors:[]});
+    });
+    S.bia=rows; S.bia._key=S.sector+S.industry;
+  }
+  renderBIA();go("bia");
+}
+function renderBIA(){
+  const c=SECTOR_CFG[S.sector];
+  const pub=S.sector==="public";
+  S.bia.forEach(r=>{if(!r.vendors)r.vendors=[];});
+  S.bia.sort((a,b)=>CRIT_ORDER[a.crit]-CRIT_ORDER[b.crit]);
+  document.getElementById("biaTitle").innerHTML=c.biaTitle;
+  // guidance
+  const guide=document.getElementById("biaGuide");
+  if(S.sector==="public"){
+    const over=S.bia.filter(x=>Number(x.rto)>12&&Number(x.rto)>0).length;
+    guide.className="note"+(over?" warn":"");
+    guide.innerHTML="<b>FEMA recovery standard applied.</b> Per FCD 1 / CPG 101, Mission Essential Functions must be operational within <b>12 hours</b> and sustainable up to <b>30 days</b>. Life-safety functions are <b>Immediate</b>. "+(over?`<b>${over} MEF(s) exceed the 12-hour target — flagged ⚠.</b>`:"All MEFs meet the 12-hour target.");
+  }else{
+    guide.className="note";
+    guide.innerHTML="<b>Recommended objectives applied.</b> Defaults follow ISO 22301/22317 practice: revenue- and safety-critical processes get tight RTO/RPO; back-office gets 24–72 hrs. Tune to your risk appetite.";
+  }
+  document.getElementById("biaSub").textContent=`${S.bia.length} functions across ${[...new Set(S.bia.map(x=>x.dept))].length} ${pub?"lifelines":"departments"} for ${S.orgName}. Edit objectives, ${pub?"assign personnel and vital records":"map people, systems and vendors"}, then build the plan.`;
+  // stats
+  const crit=S.bia.filter(x=>x.crit==="Critical").length, high=S.bia.filter(x=>x.crit==="High").length;
+  const ppl=S.bia.reduce((s,x)=>s+x.people.length,0), apps=S.bia.reduce((s,x)=>s+x.apps.length,0);
+  document.getElementById("biaStats").innerHTML=`
+    <div class="stat"><div class="n">${S.bia.length}</div><div class="l">Functions</div></div>
+    <div class="stat"><div class="n" style="color:var(--red)">${crit}</div><div class="l">Critical</div></div>
+    <div class="stat"><div class="n" style="color:var(--green)">${ppl}</div><div class="l">${pub?"Personnel mapped":"People mapped"}</div></div>
+    <div class="stat"><div class="n" style="color:var(--accent)">${apps}</div><div class="l">${pub?"Vital records":"Apps mapped"}</div></div>`;
+  // head
+  document.getElementById("biaHead").innerHTML=`<tr>
+    <th style="width:15%">${c.groupCol}</th><th style="width:22%">${c.funcCol}</th>
+    <th>Criticality</th><th>RTO</th><th>RPO</th><th style="width:20%">Impact if down</th><th>Mapping</th><th></th></tr>`;
+  const rtoOpts=[0,1,2,4,8,12,24,48,72,168], rpoOpts=[0,1,4,8,12,24,48];
+  document.getElementById("biaBody").innerHTML=S.bia.map((r,i)=>{
+    const main=`<tr>
+      <td><input type="text" value="${esc(r.dept)}" onchange="biaEdit(${i},'dept',this.value)"></td>
+      <td><input type="text" value="${esc(r.func)}" onchange="biaEdit(${i},'func',this.value)"></td>
+      <td><select onchange="biaEdit(${i},'crit',this.value);renderBIA()">${["Critical","High","Medium","Low"].map(o=>`<option ${o===r.crit?'selected':''}>${o}</option>`).join("")}</select></td>
+      <td><select onchange="biaEdit(${i},'rto',this.value);renderBIA()">${rtoOpts.map(o=>`<option value="${o}" ${o==r.rto?'selected':''}>${fmtH(o)}</option>`).join("")}</select>${S.sector==="public"&&Number(r.rto)>12?'<div style="color:var(--amber);font-size:11px;font-weight:600;margin-top:3px">⚠ &gt;12hr</div>':''}</td>
+      <td><select onchange="biaEdit(${i},'rpo',this.value)">${rpoOpts.map(o=>`<option value="${o}" ${o==r.rpo?'selected':''}>${fmtH(o)}</option>`).join("")}</select>${Number(r.rpo)>Number(r.rto)&&Number(r.rto)>0?'<div style="color:var(--amber);font-size:11px;font-weight:600;margin-top:3px" title="Recovery Point Objective is larger than the Recovery Time Objective — usually a data-entry error">⚠ RPO &gt; RTO</div>':''}</td>
+      <td><input type="text" value="${esc(r.impact)}" onchange="biaEdit(${i},'impact',this.value)"></td>
+      <td><button class="mapbtn" onclick="toggleRow(${i})">👤 ${r.people.length} · 🗄 ${r.apps.length}${pub?'':` · 🤝 ${(r.vendors||[]).length}`} ${openRow===i?'▲':'▾'}</button></td>
+      <td><button class="iconbtn no-print" onclick="S.bia.splice(${i},1);openRow=-1;renderBIA();save()">✕</button></td>
+    </tr>`;
+    const detail=openRow===i?`<tr class="maprow"><td colspan="8"><div class="pa-wrap">
+      <div><div class="pa-h">👤 ${pub?"Personnel &amp; orders of succession":"People who perform this function"}</div>
+        ${r.people.map((p,j)=>`<div class="pa-row">
+          <input type="text" value="${esc(p.name)}" placeholder="${pub?'Name (or leave blank)':'Name'}" onchange="S.bia[${i}].people[${j}].name=this.value;save()">
+          <input type="text" value="${esc(p.role)}" placeholder="${pub?'Position / successor':'Role / title'}" onchange="S.bia[${i}].people[${j}].role=this.value;save()">
+          <button class="iconbtn" onclick="S.bia[${i}].people.splice(${j},1);renderBIA();save()">✕</button></div>`).join("")||`<div class="empty">${pub?'No positions assigned yet':'No one mapped yet'}</div>`}
+        <button class="miniadd" onclick="S.bia[${i}].people.push({name:'',role:''});renderBIA();save()">+ Add ${pub?'position / successor':'person'}</button></div>
+      <div><div class="pa-h">🗄 ${pub?"Vital records &amp; supporting systems":"Applications / systems (CMDB)"}</div>
+        ${r.apps.map((a,j)=>`<div class="pa-row">
+          <input type="text" value="${esc(a.name)}" placeholder="${pub?'Record or system':'Application'}" onchange="S.bia[${i}].apps[${j}].name=this.value;save()">
+          ${pub?'':`<select onchange="S.bia[${i}].apps[${j}].tier=this.value;save()">${["Tier 1","Tier 2","Tier 3"].map(t=>`<option ${t===a.tier?'selected':''}>${t}</option>`).join("")}</select>`}
+          <button class="iconbtn" onclick="S.bia[${i}].apps.splice(${j},1);renderBIA();save()">✕</button></div>`).join("")||`<div class="empty">${pub?'No vital records mapped yet':'No apps mapped yet'}</div>`}
+        <button class="miniadd" onclick="S.bia[${i}].apps.push({name:'',tier:'Tier 2'});renderBIA();save()">+ Add ${pub?'vital record / system':'application'}</button></div>
+    </div>${pub?'':`
+    <div class="vend-wrap"><div class="pa-h">🤝 Vendors / third parties this function depends on</div>
+      ${(r.vendors||[]).map((v,j)=>`<div class="vend-row">
+        <input type="text" value="${esc(v.name||'')}" placeholder="Vendor" onchange="S.bia[${i}].vendors[${j}].name=this.value;save()">
+        <input type="text" value="${esc(v.service||'')}" placeholder="What they provide" onchange="S.bia[${i}].vendors[${j}].service=this.value;save()">
+        <select title="Vendor's own recovery commitment" onchange="S.bia[${i}].vendors[${j}].rto=this.value;save()">${["","0","1","2","4","8","12","24","48","72"].map(o=>`<option value="${o}" ${o==(v.rto==null?'':String(v.rto))?'selected':''}>${o===''?'Their RTO':fmtH(o)}</option>`).join("")}</select>
+        <select title="Pre-qualified alternate?" onchange="S.bia[${i}].vendors[${j}].alt=this.value;save()">${["Alt?","Yes","No","Partial"].map(o=>`<option ${o===(v.alt||'Alt?')?'selected':''}>${o}</option>`).join("")}</select>
+        <button class="iconbtn" onclick="S.bia[${i}].vendors.splice(${j},1);renderBIA();save()">✕</button></div>`).join("")||'<div class="empty">No vendors mapped</div>'}
+      <button class="miniadd" onclick="(S.bia[${i}].vendors=S.bia[${i}].vendors||[]).push({name:'',service:'',rto:'',alt:'Alt?'});renderBIA();save()">+ Add vendor</button></div>`}
+    </td></tr>`:"";
+    return main+detail;
+  }).join("");
+}
+function toggleRow(i){openRow=openRow===i?-1:i;renderBIA();}
+function biaEdit(i,k,v){S.bia[i][k]=v;save();}
+function addBIARow(){S.bia.push({dept:S.sector==="public"?"New lifeline":"New dept",func:"New function",rto:24,rpo:8,crit:"Medium",impact:"",people:[],apps:[],vendors:[]});renderBIA();save();}
+
+/* ============ ORG PROFILE: AI RESEARCH + IMPORT ============ */
+function applyProfile(d){
+  if(!d||typeof d!=="object")return false;
+  if(d.sector)selectSector(d.sector);          // resets depts/bia for the sector
+  if(d.industry&&INDUSTRIES[d.industry]){S.industry=d.industry;const sel=document.getElementById("industry");if(sel)sel.value=d.industry;}
+  S.orgName=d.orgName||S.orgName||""; S.owner=d.owner||S.owner||"";
+  if(d.size)S.size=d.size;
+  if(Array.isArray(d.regs)&&d.regs.length)S.regs=d.regs.slice();
+  S.customDepts=Array.isArray(d.customDepts)?d.customDepts.slice():[];
+  if(Array.isArray(d.depts)&&d.depts.length)S.depts=d.depts.slice();
+  if(Array.isArray(d.bia)){
+    S.bia=d.bia.map(r=>({dept:r.dept||"",func:r.func||"",rto:r.rto!=null?r.rto:24,rpo:r.rpo!=null?r.rpo:8,
+      crit:r.crit||"Medium",impact:r.impact||"",people:Array.isArray(r.people)?r.people:[],apps:Array.isArray(r.apps)?r.apps:[],vendors:Array.isArray(r.vendors)?r.vendors:[]}));
+    S.bia._key=S.sector+S.industry;
+  }
+  document.getElementById("orgName").value=S.orgName;
+  document.getElementById("owner").value=S.owner;
+  applySector();renderDepts();renderRegs();
+  document.querySelectorAll("#sizeChips .chip").forEach(c=>c.classList.toggle("on",c.textContent===S.size));
+  save();
+  if(S.bia.length){renderBIA();go("bia");
+    document.getElementById("importMsg").innerHTML=`<div class="note"><b>Loaded ${esc(S.orgName)}.</b> ${S.bia.length} functions pre-filled from research — review the objectives, map your people and backups, and correct anything that's off. This is an AI starting point, not gospel.</div>`;}
+  return true;
+}
+function importProfile(input){
+  const f=input.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=e=>{let d;try{d=JSON.parse(e.target.result)}catch(err){rStatus("Could not read that file — is it a valid profile JSON?",true);return;}applyProfile(d);};
+  rd.readAsText(f);input.value="";
+}
+function toggleBox(id){const b=document.getElementById(id);b.style.display=b.style.display==="none"?"block":"none";}
+function rStatus(t,warn){document.getElementById("researchStatus").innerHTML=t?`<div class="note ${warn?'warn':''}" style="margin:10px 0 0">${t}</div>`:"";}
+function scanStat(t,warn){document.getElementById("scanStatus").innerHTML=t?`<div class="note ${warn?'warn':''}" style="margin:10px 0 0">${t}</div>`:"";}
+function pickFile(id){document.getElementById(id).click();}
+function parseJSONLoose(t){if(!t)return null;t=t.replace(/```json/gi,"```").trim();const a=t.indexOf("{"),b=t.lastIndexOf("}");if(a<0||b<0)return null;try{return JSON.parse(t.slice(a,b+1))}catch(e){return null}}
+function buildResearchPrompt(name){
+  return `You are a business continuity analyst. Read the document(s) I have shared for the organization "${name}" and extract a continuity profile. Use the documents as the source of truth; only fall back to obvious public knowledge to fill clear gaps. Produce ONLY a JSON object (no prose, no code fences) matching this exact schema:
+{
+ "orgName": string,
+ "owner": string (e.g. "Head of Resilience / BC Coordinator"),
+ "sector": "${S.sector}",
+ "industry": one of ${JSON.stringify(Object.keys(INDUSTRIES))} (best fit; ignore for public sector),
+ "size": one of ${JSON.stringify(SIZES)} (closest employee band),
+ "regs": [array of the regulations/standards that actually apply to this org],
+ "customDepts": [departments/functions not in a standard list],
+ "depts": [the departments or, for public sector, the relevant FEMA Community Lifelines: ${JSON.stringify(LIFELINES)}],
+ "bia": [ for EACH critical function/process: {
+    "dept": string, "func": string,
+    "rto": integer hours (0=immediate; public-sector Mission Essential Functions must be <=12),
+    "rpo": integer hours,
+    "crit": "Critical"|"High"|"Medium"|"Low",
+    "impact": string (what happens if it's down),
+    "people": [{"name":"","role":"the role that owns it"}],
+    "apps": [{"name":"real system/app this org likely uses","tier":"Tier 1"|"Tier 2"|"Tier 3"}],
+    "vendors": [{"name":"real third-party/supplier this function depends on","service":"what they provide","rto": integer hours (their own recovery commitment, best estimate), "alt":"Yes"|"No"|"Partial" (is a pre-qualified alternate realistic?)}]
+ } ]
+}
+For functions that rely on external providers (cloud, payroll, payments, telecom, logistics, SaaS), include the real vendors — this powers the third-party risk analysis.
+Make it specific to "${name}" — real systems, real regulations, realistic recovery objectives. Aim for 10-18 functions. Output JSON only.`;
+}
+function copyPrompt(){
+  const name=(document.getElementById("orgName").value||"the organization").trim();
+  const p=buildResearchPrompt(name);
+  navigator.clipboard?.writeText(p).then(()=>rStatus("Instruction copied. Give it to any AI assistant along with your documents, then paste the JSON it returns into <b>Paste AI result</b>."),()=>rStatus("Couldn't copy automatically — open <b>Paste AI result</b> for the instruction.",true));
+}
+function fillFromPaste(){
+  const d=parseJSONLoose(document.getElementById("pasteJSON").value);
+  if(!d){rStatus("Couldn't find valid JSON in that text. Make sure you pasted the AI's full JSON answer.",true);return;}
+  if(applyProfile(d))rStatus("");
+}
+/* ---- Lazy-loaded parsing libraries (CDN, only fetched when needed) ---- */
+const LIBS={
+  xlsx:"https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
+  mammoth:"https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js",
+  pdf:"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"};
+const _libP={};
+function ensureLib(k){return _libP[k]||(_libP[k]=new Promise((res,rej)=>{
+  const s=document.createElement("script");s.src=LIBS[k];
+  s.onload=()=>res(true);s.onerror=()=>rej(new Error("could not load the "+k+" reader — needs internet"));
+  document.head.appendChild(s);}));}
+function parseHours(s){if(s==null||s==="")return null;s=String(s).toLowerCase();const m=s.match(/(\d+(?:\.\d+)?)/);if(!m)return null;let n=parseFloat(m[1]);if(/week/.test(s))n*=168;else if(/day/.test(s)&&!/hour|hr/.test(s))n*=24;else if(/min/.test(s)&&!/hour|hr/.test(s))n=n/60;return Math.round(n);}
+function normCrit(s){s=String(s||"").toLowerCase();if(/crit|sev.?1|p1|highest|tier.?1/.test(s)||/\b1\b/.test(s))return"Critical";if(/high|sev.?2|p2|\b2\b/.test(s))return"High";if(/low|p4|\b4\b/.test(s))return"Low";return"Medium";}
+
+/* ---- Read CSV or Excel into normalized lowercase-keyed row objects ---- */
+async function readTabular(file){
+  const name=file.name.toLowerCase();
+  if(name.endsWith(".csv"))return parseCSV(await file.text());
+  await ensureLib("xlsx");
+  const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const arr=XLSX.utils.sheet_to_json(ws,{defval:""});
+  return arr.map(o=>{const r={};Object.keys(o).forEach(k=>r[String(k).trim().toLowerCase()]=String(o[k]).trim());return r;});
+}
+
+/* ---- Seed an empty BIA from selected departments (no nav) ---- */
+function ensureBIASeed(){
+  if(S.bia.length)return;
+  const lib=libFor();let rows=[];
+  S.depts.forEach(g=>{
+    const fs=lib.filter(f=>f[0]===g);
+    if(fs.length)fs.forEach(f=>rows.push({dept:f[0],func:f[1],rto:f[2],rpo:f[3],crit:f[4],impact:f[5],people:[],apps:[],vendors:[]}));
+    else rows.push({dept:g,func:(S.sector==="public"?"Essential function — "+g:"Core "+g+" operations"),rto:S.sector==="public"?12:24,rpo:8,crit:S.sector==="public"?"High":"Medium",impact:"Operations in "+g+" disrupted",people:[],apps:[],vendors:[]});
+  });
+  S.bia=rows;S.bia._key=S.sector+S.industry;
+}
+
+/* ---- Map parsed rows onto functions ---- */
+function mapPeopleRows(rows){let matched=0,total=0;
+  rows.forEach(o=>{const name=pick(o,["name","full name","employee","person","staff"]);if(!name)return;total++;
+    const role=pick(o,["role","title","position","job title"]);
+    const sup=pick(o,["function","process","department","team","supports","business unit","unit","mef","lifeline"]);
+    const hits=matchRows(sup);if(hits.length){hits.forEach(r=>r.people.push({name,role:role||"—"}));matched++;}});
+  msg(`Imported ${total} people — ${matched} auto-mapped to functions.`+(total-matched?` ${total-matched} had no matching function (check the function/department column).`:""),total-matched>0);}
+function mapAppRows(rows){let matched=0,total=0;S.unmappedApps=[];
+  rows.forEach(o=>{const name=pick(o,["application","app","name","ci","system","service name","ci name"]);if(!name)return;total++;
+    let tier=pick(o,["tier","criticality","class","priority"])||"Tier 2";
+    if(/1|crit/i.test(tier))tier="Tier 1";else if(/3|low/i.test(tier))tier="Tier 3";else tier="Tier 2";
+    const sup=pick(o,["supports","process","function","business service","service","department","application supports","used by","mef","lifeline"]);
+    const hits=matchRows(sup);if(hits.length){hits.forEach(r=>r.apps.push({name,tier}));matched++;}else S.unmappedApps.push(name);});
+  msg(`Imported ${total} applications — ${matched} auto-tied to functions.`+(S.unmappedApps.length?` ${S.unmappedApps.length} unmapped: ${S.unmappedApps.slice(0,6).join(", ")}${S.unmappedApps.length>6?"…":""}. Add a "Supports" column naming the process to auto-tie them.`:""),S.unmappedApps.length>0);}
+function mapVendorRows(rows){let matched=0,total=0;
+  rows.forEach(o=>{const name=pick(o,["vendor","supplier","third party","provider","company","name"]);if(!name)return;total++;
+    const service=pick(o,["service","provides","what they provide","description","product","category"]);
+    const rh=parseHours(pick(o,["rto","recovery time","recovery","sla","commitment","rto (hrs)"]));
+    let alt=pick(o,["alternate","alt","backup","secondary","alternative","fallback"]);
+    alt=/^y|yes|true|1/i.test(alt)?"Yes":/^n|no|false|0/i.test(alt)?"No":/part/i.test(alt)?"Partial":"Alt?";
+    const sup=pick(o,["supports","function","process","department","used by","business service","mef","lifeline"]);
+    const hits=matchRows(sup);if(hits.length){hits.forEach(r=>{r.vendors=r.vendors||[];r.vendors.push({name,service:service||"",rto:rh==null?"":rh,alt});});matched++;}});
+  msg(`Imported ${total} vendors — ${matched} auto-mapped to functions.`+(total-matched?` ${total-matched} had no matching function (add a "Supports" column naming the process).`:""),total-matched>0);}
+
+/* ---- Seed the whole BIA table from a functions/BIA sheet ---- */
+function seedBIAFromRows(rows){
+  const out=[];
+  rows.forEach(o=>{
+    const func=pick(o,["function","process","mef","mission essential function","activity","service","business process"]);if(!func)return;
+    const dept=pick(o,["department","dept","group","lifeline","business unit","unit","area","owner group"])||"General";
+    const rto=parseHours(pick(o,["rto","recovery time","recovery time objective","rto (hrs)"]));
+    const rpo=parseHours(pick(o,["rpo","recovery point","recovery point objective"]));
+    out.push({dept,func,rto:rto==null?24:rto,rpo:rpo==null?8:rpo,crit:normCrit(pick(o,["criticality","crit","priority","tier","importance"])),
+      impact:pick(o,["impact","impact if down","consequence","description"])||"",people:[],apps:[],vendors:[]});
+  });
+  if(!out.length){rStatus("Couldn't find a function/process column in that sheet. Name one column <b>Function</b> or <b>Process</b> and try again.",true);return;}
+  S.bia=out;S.bia._key=S.sector+S.industry;
+  out.forEach(r=>{if(r.dept&&!S.depts.includes(r.dept)){if(!groupsFor().map(normDept).includes(normDept(r.dept))&&!S.customDepts.includes(r.dept))S.customDepts.push(r.dept);S.depts.push(r.dept);}});
+  S.orgName=document.getElementById("orgName").value||S.orgName;S.owner=document.getElementById("owner").value||S.owner;
+  renderDepts();renderBIA();save();go("bia");
+  msg(`Loaded ${out.length} functions from your sheet. Review the objectives, then map people, apps and vendors.`);
+}
+
+/* ---- Upload dispatcher ---- */
+async function onUpload(kind,input){
+  const f=input.files[0];if(!f)return;input.value="";
+  rStatus(`Reading <b>${esc(f.name)}</b>…`);
+  let rows;
+  try{rows=await readTabular(f);}catch(e){rStatus("Couldn't read that file ("+esc(String(e.message||e))+").",true);return;}
+  if(!rows||!rows.length){rStatus("That file looked empty — is the first row a header?",true);return;}
+  rStatus("");
+  if(kind==="bia"){seedBIAFromRows(rows);return;}
+  S.orgName=document.getElementById("orgName").value||S.orgName;S.owner=document.getElementById("owner").value||S.owner;
+  ensureBIASeed();
+  if(kind==="people")mapPeopleRows(rows);
+  else if(kind==="apps")mapAppRows(rows);
+  else if(kind==="vendors")mapVendorRows(rows);
+  renderBIA();save();go("bia");
+}
+
+/* ---- Document scan: extract text, keyword-suggest a draft BIA ---- */
+const SCAN_APPS=["Okta","Microsoft Entra","Entra ID","Azure AD","Active Directory","AWS","Azure","Google Cloud","GCP","Salesforce","ServiceNow","SAP","Oracle","Workday","NetSuite","QuickBooks","ADP","Paychex","Epic","Cerner","Meditech","Splunk","CrowdStrike","SentinelOne","Palo Alto","Zscaler","Cloudflare","Akamai","Twilio","Zoom","Slack","Microsoft 365","Office 365","Google Workspace","GitHub","GitLab","Jira","Confluence","Kubernetes","VMware","Citrix","SQL Server","PostgreSQL","MongoDB","Snowflake","Tableau","Datadog","Dynatrace","PagerDuty","Genesys","Five9","Stripe","Adyen","Mulesoft","Verkada","Lenel","Genetec","Milestone"];
+const SCAN_VENDORS=["AWS","Amazon Web Services","Microsoft","Google","Salesforce","ServiceNow","SAP","Oracle","Workday","ADP","Paychex","Cloudflare","Akamai","Twilio","Okta","Iron Mountain","Cisco","IBM","Verizon","AT&T","Comcast","Lumen","Stripe","Adyen","UPS","FedEx","DHL","Securitas","Allied Universal","GardaWorld"];
+function scanText(text){
+  const low=" "+text.toLowerCase()+" ";
+  const STOP=new Set(["and","the","for","with","amp","systems","system","management","services","service","control","operations","access","data","plant"]);
+  const seen=new Set(),funcs=[];
+  Object.keys(INDUSTRIES).forEach(k=>INDUSTRIES[k].funcs.forEach(f=>addFn(f)));
+  GOV_FUNCS.forEach(f=>addFn(f));
+  function addFn(f){
+    if(seen.has(f[1].toLowerCase()))return;
+    const words=f[1].toLowerCase().replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(w=>w.length>=5&&!STOP.has(w));
+    if(words.some(w=>low.includes(" "+w))){seen.add(f[1].toLowerCase());funcs.push(f);}
+  }
+  const hit=list=>{const out=[];list.forEach(n=>{if(new RegExp("(^|[^a-z0-9])"+n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"([^a-z0-9]|$)","i").test(low)&&!out.some(x=>x.toLowerCase()===n.toLowerCase()))out.push(n);});return out;};
+  const apps=hit(SCAN_APPS),vendors=hit(SCAN_VENDORS);
+  const rtos=[...text.matchAll(/\b(rto|rpo|recovery time|recovery point|mtpd|mtd)\b[^.\n]{0,32}?(\d+\s*(?:hours?|hrs?|days?|minutes?|mins?))/gi)].map(m=>m[0].replace(/\s+/g," ").trim());
+  return {funcs:funcs.slice(0,18),apps,vendors,rtos:[...new Set(rtos)].slice(0,6)};
+}
+function applyScan(res){
+  const parts=[];
+  if(res.funcs.length){
+    const have=new Set(S.bia.map(r=>r.func.toLowerCase()));
+    res.funcs.forEach(f=>{if(!have.has(f[1].toLowerCase()))S.bia.push({dept:f[0],func:f[1],rto:f[2],rpo:f[3],crit:f[4],impact:f[5],people:[],apps:[],vendors:[]});});
+    S.bia._key=S.sector+S.industry;
+    parts.push(`<b>${res.funcs.length}</b> candidate function${res.funcs.length>1?"s":""} added to the BIA`);
+  }
+  if(res.apps.length)parts.push(`systems detected: ${res.apps.slice(0,12).map(a=>`<span class="pill app">${esc(a)}</span>`).join(" ")}`);
+  if(res.vendors.length)parts.push(`vendors detected: ${res.vendors.slice(0,12).map(a=>`<span class="pill">${esc(a)}</span>`).join(" ")}`);
+  if(res.rtos.length)parts.push(`recovery targets mentioned: ${res.rtos.map(r=>`<span class="pill">${esc(r)}</span>`).join(" ")}`);
+  if(!parts.length){scanStat("Scanned the document but couldn't confidently pull out functions, systems, or recovery times. Try the structured upload, or the AI option for messy narrative plans.",true);return;}
+  S.orgName=document.getElementById("orgName").value||S.orgName;S.owner=document.getElementById("owner").value||S.owner;
+  renderBIA();save();
+  scanStat(`<b>Draft built from your document.</b> ${parts.join(". ")}. This is a keyword scan, not comprehension — <b>review and correct everything</b>. Detected systems and vendors are listed for reference, not auto-attached; open the BIA to map them to the right functions.`);
+  go("bia");
+}
+async function onScanDoc(input){
+  const f=input.files[0];if(!f)return;input.value="";
+  const n=f.name.toLowerCase();
+  scanStat(`Reading <b>${esc(f.name)}</b>…`);
+  let text="";
+  try{
+    if(n.endsWith(".txt")||n.endsWith(".md"))text=await f.text();
+    else if(n.endsWith(".docx")){await ensureLib("mammoth");const r=await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()});text=r.value||"";}
+    else if(n.endsWith(".pdf")){await ensureLib("pdf");pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;const t=[];
+      for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p);const c=await pg.getTextContent();t.push(c.items.map(i=>i.str).join(" "));}
+      text=t.join("\n");}
+    else if(n.endsWith(".doc")){scanStat("Old <b>.doc</b> can't be read in the browser — save it as <b>.docx</b> or PDF and try again.",true);return;}
+    else text=await f.text();
+  }catch(e){scanStat("Couldn't read that document ("+esc(String(e.message||e))+"). It may need internet to load the reader, or be an image-only scan.",true);return;}
+  if(!text||text.trim().length<40){scanStat("No readable text found. If it's a scanned/photographed PDF, the tool can't read the image — try the structured upload or the AI option.",true);return;}
+  applyScan(scanText(text));
+}
+
+/* ============ CSV IMPORT ============ */
+function splitCSVLine(l){const out=[];let cur="",q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(ch==='"'){q=!q;}else if(ch===','&&!q){out.push(cur);cur="";}else cur+=ch;}out.push(cur);return out;}
+function parseCSV(text){const lines=text.split(/\r?\n/).filter(l=>l.trim());if(!lines.length)return[];const head=splitCSVLine(lines[0]).map(h=>h.trim().toLowerCase());return lines.slice(1).map(l=>{const c=splitCSVLine(l);const o={};head.forEach((h,i)=>o[h]=(c[i]||"").trim());return o;});}
+function pick(o,keys){for(const k of keys)if(o[k])return o[k];return"";}
+function matchRows(text){
+  if(!text)return[];text=text.toLowerCase();
+  return S.bia.filter(r=>{const f=r.func.toLowerCase(),d=r.dept.toLowerCase();
+    return text.includes(f)||f.includes(text)||text.includes(d)||d.includes(text);});
+}
+function importPeople(input){const f=input.files[0];if(!f)return;input.value="";
+  readTabular(f).then(rows=>{mapPeopleRows(rows);renderBIA();save();}).catch(e=>msg("Couldn't read that file ("+esc(String(e.message||e))+").",true));}
+function importApps(input){const f=input.files[0];if(!f)return;input.value="";
+  readTabular(f).then(rows=>{mapAppRows(rows);renderBIA();save();}).catch(e=>msg("Couldn't read that file ("+esc(String(e.message||e))+").",true));}
+function importVendors(input){const f=input.files[0];if(!f)return;input.value="";
+  readTabular(f).then(rows=>{mapVendorRows(rows);renderBIA();save();}).catch(e=>msg("Couldn't read that file ("+esc(String(e.message||e))+").",true));}
+function msg(t,warn){const m=document.getElementById("importMsg");m.innerHTML=`<div class="note ${warn?'warn':''}">${warn?'':'<b>Done.</b> '}${t}</div>`;}
+
+/* ============ STEP 3: RESILIENCE ANALYSIS ============ */
+function _own(p){return (p.name&&p.name.trim())||(p.role&&p.role.trim())||"";}
+function _isCrit(c){return c==="Critical"||c==="High";}
+function analyzeResilience(){
+  const F=[];
+  (S.bia||[]).forEach(r=>{if(!r.vendors)r.vendors=[];});
+  // 1. Key-person risk: no owner / no backup
+  S.bia.forEach(f=>{
+    const named=f.people.filter(_own);
+    if(_isCrit(f.crit)&&named.length===0)
+      F.push({sev:"critical",cat:"Key-person risk",title:`“${f.func}” has no named owner`,
+        detail:`A ${f.crit.toLowerCase()} function in ${f.dept} with a ${fmtH(f.rto)} recovery target and nobody assigned to recover it. On paper it's covered; in an incident it's orphaned.`,
+        fix:`Name a primary owner and a cross-trained backup before this plan is approved.`});
+    else if(named.length===1)
+      F.push({sev:_isCrit(f.crit)?"high":"medium",cat:"Key-person risk",title:`“${f.func}” rests on one person`,
+        detail:`Only ${_own(named[0])} is mapped to this ${f.crit.toLowerCase()} function (RTO ${fmtH(f.rto)}). If they're on a plane, on leave, or affected by the same event, recovery stalls.`,
+        fix:`Add and cross-train a backup owner so the function survives a single absence.`});
+  });
+  // 2. People concentration
+  const pMap={};
+  S.bia.forEach(f=>{const seen=new Set();f.people.forEach(p=>{const n=_own(p);if(!n||seen.has(n.toLowerCase()))return;seen.add(n.toLowerCase());(pMap[n]=pMap[n]||[]).push(f);});});
+  Object.entries(pMap).forEach(([n,fns])=>{
+    const crit=fns.filter(f=>_isCrit(f.crit));
+    if(crit.length>=3||(crit.length>=2&&fns.length>=4))
+      F.push({sev:crit.length>=4?"critical":"high",cat:"Concentration risk",title:`${n} is the linchpin for ${crit.length} critical functions`,
+        detail:`${n} is mapped to ${crit.length} critical/high function${crit.length>1?"s":""}: ${crit.slice(0,4).map(f=>f.func).join(", ")}${crit.length>4?", …":""}. One person cannot personally recover all of them at once during a real event.`,
+        fix:`Redistribute ownership or pre-designate deputies. No individual should be the single recovery dependency for this many critical functions.`});
+  });
+  // 3. Application SPOF / concentration
+  const aMap={};
+  S.bia.forEach(f=>{const seen=new Set();f.apps.forEach(a=>{const n=(a.name||"").trim();if(!n||seen.has(n.toLowerCase()))return;seen.add(n.toLowerCase());(aMap[n]=aMap[n]||{fns:[],tier:a.tier}).fns.push(f);});});
+  Object.entries(aMap).forEach(([n,o])=>{
+    const fns=o.fns,crit=fns.filter(f=>_isCrit(f.crit)),depts=[...new Set(fns.map(f=>f.dept))].length,tRTO=Math.min(...fns.map(f=>Number(f.rto)));
+    if(fns.length>=3||crit.length>=2)
+      F.push({sev:(crit.length>=3||(o.tier==="Tier 1"&&crit.length>=2))?"high":"medium",cat:"Single point of failure",title:`${n} underpins ${fns.length} functions`,
+        detail:`${n}${o.tier?` (${o.tier})`:""} supports ${fns.length} function${fns.length>1?"s":""} across ${depts} department${depts>1?"s":""}, ${crit.length} of them critical/high. A single outage of ${n} is a multi-function event, not an isolated one.`,
+        fix:`Confirm redundancy/failover for ${n}, document a manual workaround, and verify its recovery time meets the tightest dependent RTO (${fmtH(tRTO)}).`});
+  });
+  // 4. RTO vs capability gap
+  S.bia.forEach(f=>{
+    if(_isCrit(f.crit)&&Number(f.rto)<=4&&f.apps.length===0)
+      F.push({sev:"medium",cat:"RTO capability gap",title:`“${f.func}” promises ${fmtH(f.rto)} recovery with no system mapped`,
+        detail:`A recovery target this aggressive needs identified systems and a tested recovery path. Nothing is mapped, so the RTO isn't backed by anything yet — it's an aspiration.`,
+        fix:`Map the supporting system(s) and a recovery strategy, or relax the RTO to what you can actually achieve and defend.`});
+    if(Number(f.rpo)===0&&f.apps.length===0&&_isCrit(f.crit))
+      F.push({sev:"medium",cat:"RTO capability gap",title:`“${f.func}” implies zero data loss with no system mapped`,
+        detail:`An RPO of "Immediate" means continuous replication. No application is mapped to confirm that capability exists.`,
+        fix:`Identify the system of record and confirm it replicates continuously, or set a realistic RPO.`});
+  });
+  if(S.sector==="public")S.bia.forEach(f=>{if(Number(f.rto)>12)
+    F.push({sev:"high",cat:"FEMA standard",title:`“${f.func}” exceeds the 12-hour MEF standard`,
+      detail:`Per FCD 1 / CPG 101, Mission Essential Functions must be recoverable within 12 hours. This one is set to ${fmtH(f.rto)}.`,
+      fix:`Tighten the RTO to 12 hours or less, or formally justify and document the exception.`});});
+  // 5. Vendor / third-party exposure
+  const vMap={};
+  S.bia.forEach(f=>{(f.vendors||[]).forEach(v=>{
+    const n=(v.name||"").trim();if(!n)return;(vMap[n]=vMap[n]||[]).push(f);
+    const vr=(v.rto===""||v.rto==null)?null:Number(v.rto);
+    if(vr!=null&&vr>Number(f.rto)&&_isCrit(f.crit))
+      F.push({sev:vr>=Number(f.rto)*2?"high":"medium",cat:"Vendor exposure",title:`${n} can't meet the “${f.func}” recovery target`,
+        detail:`Your RTO for this ${f.crit.toLowerCase()} function is ${fmtH(f.rto)}, but ${n}'s own recovery commitment is ${fmtH(vr)}. You cannot recover faster than your slowest critical vendor — your real RTO is theirs.`,
+        fix:`Negotiate a stronger SLA, pre-qualify an alternate provider, or stand up an interim manual process to bridge the gap.`});
+    if(_isCrit(f.crit)&&v.alt==="No")
+      F.push({sev:"medium",cat:"Vendor exposure",title:`No alternate for ${n} (${f.func})`,
+        detail:`${n} supports a ${f.crit.toLowerCase()} function and you've flagged no pre-qualified alternate. If they fail, there is no documented fallback.`,
+        fix:`Identify and pre-qualify a backup provider, or document the manual workaround you'd run without them.`});
+  });});
+  Object.entries(vMap).forEach(([n,fns])=>{
+    const crit=fns.filter(f=>_isCrit(f.crit));
+    if(crit.length>=2)
+      F.push({sev:"high",cat:"Concentration risk",title:`${n} is a shared dependency for ${crit.length} critical functions`,
+        detail:`${n} underpins ${crit.length} critical/high functions. Their outage is a multi-function event for you. A single supplier shouldn't be able to take down this much at once.`,
+        fix:`Treat ${n} as a critical single supplier: confirm their BCP/DR commitment in writing and diversify where switching is feasible.`});
+  });
+  const seen=new Set(),order={critical:0,high:1,medium:2};
+  return F.filter(x=>{const k=x.cat+"|"+x.title;if(seen.has(k))return false;seen.add(k);return true;}).sort((a,b)=>order[a.sev]-order[b.sev]);
+}
+function buildAnalysis(){
+  S.orgName=document.getElementById("orgName").value||S.orgName||"Your organization";
+  const F=analyzeResilience();
+  const crit=F.filter(x=>x.sev==="critical").length,high=F.filter(x=>x.sev==="high").length,med=F.filter(x=>x.sev==="medium").length;
+  let score=100-(crit*12+high*7+med*3);if(score<0)score=0;
+  const band=score>=85?["Strong","var(--green)"]:score>=65?["Moderate","var(--amber)"]:["Fragile","var(--red)"];
+  document.getElementById("anaSub").textContent=`${F.length} resilience gap${F.length!==1?"s":""} found across ${S.bia.length} functions for ${S.orgName}. This is what a plan-on-paper hides — single points of failure, owners who don't exist, recovery targets nothing backs up. Fix them before an incident does.`;
+  let body=`<div class="score-wrap">
+     <div class="score-ring" style="--c:${band[1]};--p:${score}"><div class="score-n">${score}</div><div class="score-l">/100</div></div>
+     <div class="score-meta"><div class="score-band" style="color:${band[1]}">${band[0]} resilience posture</div>
+       <div class="score-d">Weighted from the open structural gaps below. A continuity plan you haven't pressure-tested for single points of failure is a document, not a capability.</div></div>
+   </div>
+   <div class="stat-row">
+     <div class="stat"><div class="n" style="color:var(--red)">${crit}</div><div class="l">Critical gaps</div></div>
+     <div class="stat"><div class="n" style="color:var(--amber)">${high}</div><div class="l">High gaps</div></div>
+     <div class="stat"><div class="n" style="color:var(--accent)">${med}</div><div class="l">Medium gaps</div></div>
+     <div class="stat"><div class="n">${S.bia.length}</div><div class="l">Functions analyzed</div></div>
+   </div>`;
+  if(!F.length){
+    body+=`<div class="note"><b>No structural gaps detected.</b> Every function has an owner and a backup, no single person or system is over-concentrated, recovery targets are backed by mapped systems, and vendor commitments meet your RTOs. Re-run this after every change to the BIA — resilience decays as the org changes.</div>`;
+  }else{
+    [...new Set(F.map(f=>f.cat))].forEach(cat=>{
+      const items=F.filter(f=>f.cat===cat);
+      body+=`<h3 style="margin-top:26px">${cat} <span class="hint">— ${items.length}</span></h3>`+
+        items.map(f=>`<div class="finding ${f.sev}">
+          <div class="finding-h"><span class="sev-tag ${f.sev}">${f.sev}</span><span class="finding-t">${esc(f.title)}</span></div>
+          <div class="finding-d">${esc(f.detail)}</div>
+          <div class="finding-fix"><b>Fix:</b> ${esc(f.fix)}</div>
+        </div>`).join("");
+    });
+    body+=`<div class="note no-print" style="margin-top:22px"><b>These flow into your plan.</b> Generate the Continuity Plan next — recovery procedures, backup owners, and the vendor section are pre-filled from everything analyzed here.</div>`;
+  }
+  body+=riskRegisterHTML();
+  document.getElementById("anaContent").innerHTML=body;
+  go("analysis");
+}
+/* ---- Lightweight risk register: likelihood x impact per threat scenario (ISO 22301 §8.2.3) ---- */
+const RISK_LVL=["Low","Medium","High"];
+function riskScore(l,i){const m={Low:1,Medium:2,High:3};const s=(m[l]||0)*(m[i]||0);if(!s)return{t:"—",c:"var(--muted)",bg:"#eef2f7"};if(s>=6)return{t:"High",c:"#dc2626",bg:"var(--red-soft)"};if(s>=3)return{t:"Medium",c:"#b45309",bg:"var(--amber-soft)"};return{t:"Low",c:"#0e9f6e",bg:"var(--green-soft)"};}
+function setRisk(id,field,val){if(!S.risk)S.risk={};if(!S.risk[id])S.risk[id]={likelihood:"Medium",impact:"High"};S.risk[id][field]=val;save();buildAnalysis();}
+function riskRegisterHTML(){
+  const sel=(id,field,cur)=>`<select onchange="setRisk('${id}','${field}',this.value)">${RISK_LVL.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join("")}</select>`;
+  const rows=SCENARIOS.map(sc=>{
+    const r=(S.risk&&S.risk[sc.id])||{likelihood:"Medium",impact:"High"};
+    const lv=riskScore(r.likelihood,r.impact);
+    return `<tr>
+      <td style="white-space:nowrap">${sc.ico} <b>${esc(sc.t)}</b><div style="font-size:11px;color:var(--muted)">${esc(sc.d)}</div></td>
+      <td>${sel(sc.id,'likelihood',r.likelihood)}</td>
+      <td>${sel(sc.id,'impact',r.impact)}</td>
+      <td><span class="crit" style="background:${lv.bg};color:${lv.c}">${lv.t}</span></td>
+    </tr>`;
+  }).join("");
+  return `<h3 style="margin-top:30px">Risk register <span class="hint">— likelihood × impact per threat</span></h3>
+    <span class="field-hint">Rate how <b>likely</b> each threat is and how <b>severe</b> the impact would be on your critical functions. The tool combines them into a risk level. This pairs the impact analysis (what an outage costs) with a threat assessment (what could cause one) — together they satisfy ISO 22301 §8.2.3 / FEMA CPG 101 risk assessment. High risks deserve the most-tested recovery procedures.</span>
+    <div style="overflow-x:auto"><table><thead><tr><th style="width:44%">Threat scenario</th><th>Likelihood</th><th>Impact</th><th>Risk level</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+
+/* ============ STEP 4: BCP ============ */
+function buildBCP(){
+  const pub=S.sector==="public", c=SECTOR_CFG[S.sector];
+  ensureRec();
+  const byRTO=S.bia.slice().sort((a,b)=>Number(a.rto)-Number(b.rto));
+  const crit=byRTO.filter(x=>x.crit==="Critical"||x.crit==="High");
+  const t0=S.bia.filter(x=>Number(x.rto)<=1),t1=S.bia.filter(x=>Number(x.rto)>1&&Number(x.rto)<=8),
+        t2=S.bia.filter(x=>Number(x.rto)>8&&Number(x.rto)<=24),t3=S.bia.filter(x=>Number(x.rto)>24);
+  const spof=S.bia.filter(x=>x.people.length<=1);
+  const minRPO=S.bia.length?Math.min(...S.bia.map(x=>Number(x.rpo))):24;
+  const minRTO=S.bia.length?Math.min(...S.bia.map(x=>Number(x.rto))):24;
+  if(!S.docctl){const d=new Date(),r=new Date(d.getTime()+365*86400000);
+    S.docctl={version:"1.0",approver:S.owner||"",date:d.toISOString().slice(0,10),review:r.toISOString().slice(0,10),exercise:new Date(d.getTime()+180*86400000).toISOString().slice(0,10),classification:"Internal — Confidential"};}
+  const _today=new Date().toISOString().slice(0,10);
+  if(!S.docctl.history)S.docctl.history=[{version:S.docctl.version||"1.0",date:S.docctl.date||_today,author:S.docctl.approver||S.owner||"",change:"Initial plan generated"}];
+  if(!S.docctl.signoffs)S.docctl.signoffs=[
+    {role:pub?"Agency head":"Plan owner",name:S.owner||"",title:"",date:"",signed:false},
+    {role:pub?"Continuity coordinator":"Executive sponsor",name:"",title:"",date:"",signed:false}];
+  document.getElementById("bcpTitle").textContent=c.planTitle+" — "+S.orgName;
+  document.getElementById("bcpSub").textContent=(pub?"Structured to FEMA CPG 101 / FCD 1. ":"Aligned to ISO 22301. ")+`${S.bia.length} functions, ${crit.length} critical/high, each with a full recovery procedure. Click any heading to expand or collapse.`;
+  const mef=c.mef; const dc=S.docctl; let html="";
+
+  // 0. Document control
+  html+=sec("0. Document control &amp; approval",`<div style="overflow-x:auto"><table class="dc-tbl"><tbody>
+    <tr><td style="width:30%"><b>Plan owner</b></td><td>${esc(S.owner)}</td></tr>
+    <tr><td><b>Version</b></td><td><input type="text" value="${esc(dc.version)}" onchange="S.docctl.version=this.value;save()" style="max-width:120px"></td></tr>
+    <tr><td><b>Approved by</b></td><td><input type="text" value="${esc(dc.approver)}" placeholder="Approver name & title" onchange="S.docctl.approver=this.value;save()"></td></tr>
+    <tr><td><b>Approved / effective date</b></td><td><input type="date" value="${esc(dc.date)}" onchange="S.docctl.date=this.value;save()" style="max-width:180px"></td></tr>
+    <tr><td><b>Next review date</b></td><td><input type="date" value="${esc(dc.review)}" onchange="S.docctl.review=this.value;save()" style="max-width:180px"></td></tr>
+    <tr><td><b>Next exercise / test date</b></td><td><input type="date" value="${esc(dc.exercise||'')}" onchange="S.docctl.exercise=this.value;save()" style="max-width:180px"></td></tr>
+    <tr><td><b>Classification</b></td><td><input type="text" value="${esc(dc.classification)}" onchange="S.docctl.classification=this.value;save()"></td></tr>
+    </tbody></table></div>
+    <div class="dc-sub">Approvals &amp; sign-off</div>
+    <div style="overflow-x:auto"><table class="dc-tbl"><thead><tr><th>Role</th><th>Name</th><th>Title</th><th>Date</th><th style="text-align:center">Signed</th><th></th></tr></thead><tbody>
+    ${(dc.signoffs||[]).map((s,i)=>`<tr>
+      <td><input type="text" value="${esc(s.role)}" onchange="S.docctl.signoffs[${i}].role=this.value;save()"></td>
+      <td><input type="text" value="${esc(s.name)}" placeholder="Name" onchange="S.docctl.signoffs[${i}].name=this.value;save()"></td>
+      <td><input type="text" value="${esc(s.title)}" placeholder="Title" onchange="S.docctl.signoffs[${i}].title=this.value;save()"></td>
+      <td><input type="date" value="${esc(s.date||'')}" onchange="S.docctl.signoffs[${i}].date=this.value;save()" style="max-width:160px"></td>
+      <td style="text-align:center"><input type="checkbox" ${s.signed?'checked':''} onchange="S.docctl.signoffs[${i}].signed=this.checked;save();buildBCP()"></td>
+      <td><button class="iconbtn no-print" onclick="S.docctl.signoffs.splice(${i},1);buildBCP();save()">✕</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <button class="addbtn no-print" onclick="addSignoff()">+ Add approver</button>
+    <div class="dc-sub">Version history</div>
+    <div style="overflow-x:auto"><table class="dc-tbl"><thead><tr><th style="width:90px">Version</th><th style="width:120px">Date</th><th>Author</th><th>Change</th></tr></thead><tbody>
+    ${(dc.history||[]).map((h,i)=>`<tr>
+      <td style="white-space:nowrap"><b>${esc(h.version)}</b></td>
+      <td style="white-space:nowrap">${esc(h.date)}</td>
+      <td><input type="text" value="${esc(h.author||'')}" placeholder="Author" onchange="S.docctl.history[${i}].author=this.value;save()"></td>
+      <td><input type="text" value="${esc(h.change||'')}" placeholder="What changed in this version" onchange="S.docctl.history[${i}].change=this.value;save()"></td></tr>`).join("")}
+    </tbody></table></div>
+    <button class="addbtn no-print" onclick="logVersion()">+ Log a change / new version</button>`);
+
+  // 1. Purpose & scope
+  html+=sec("1. Purpose &amp; scope",`<p>This plan establishes how ${S.orgName} will continue its ${pub?"Mission Essential Functions":"critical business processes"} during and after a disruption, and how it will recover to normal operations. It covers ${S.depts.length} ${pub?"community lifelines":"departments"} and ${S.bia.length} analyzed functions for an organization of ${S.size} people${pub?"":" in the "+INDUSTRIES[S.industry].label+" sector"}.</p>
+    <p><b>Objectives:</b> protect life safety first; restore ${mef.toLowerCase()} within their recovery time objectives (tightest: ${fmtH(minRTO)}); limit data loss to the recovery point objectives (tightest: ${fmtH(minRPO)}); and meet all obligations below.</p>
+    <p><b>Compliance scope:</b> ${S.regs.map(r=>`<span class="pill">${r}</span>`).join(" ")}</p>`);
+
+  // 2. Assumptions & threats
+  html+=sec("2. Planning assumptions &amp; threat scenarios",`<p>This plan assumes a disruption may remove access to people, facilities, technology, or suppliers — individually or in combination — with little warning, and may persist for an extended period (the FEMA standard plans for up to 30 days for essential functions).</p>
+    <p><b>Threat scenarios considered:</b></p><ul>${SCENARIOS.map(s=>`<li>${s.ico} <b>${s.t}</b> — ${s.d}</li>`).join("")}</ul>
+    <p>Each is exercised against this plan in the tabletop module.</p>`);
+
+  // 3. Activation
+  html+=sec("3. Activation, escalation levels &amp; authority",`<p>The plan is activated when an incident threatens one or more ${mef.toLowerCase()} beyond its recovery time objective. Authority to activate rests with the ${pub?"Agency Head or designated successor (see §5, orders of succession)":"BC Coordinator or Executive Sponsor"}.</p>
+    <ul>
+      <li><b>Triggers:</b> facility unavailable, critical system outage, loss of key personnel, supplier/utility failure, cyber incident, or an external order to evacuate.</li>
+      <li><b>Level 1 — Monitor:</b> potential disruption; coordinator on watch, no activation.</li>
+      <li><b>Level 2 — Partial:</b> one or more functions affected; relevant recovery teams activated.</li>
+      <li><b>Level 3 — Full:</b> major disruption; full plan activated${pub?", relocate to alternate facility, EOC stood up":", command structure stood up"}.</li>
+    </ul>`);
+
+  // 4. Emergency response - first 60 min
+  html+=sec("4. Emergency response — first 60 minutes",`<p>Immediate actions, in order, on any major incident:</p>
+    <ul>
+      <li><b>0–5 min — Life safety first:</b> ensure people are safe; evacuate or shelter as required; account for staff and visitors.</li>
+      <li><b>5–15 min — Assess &amp; declare:</b> confirm what is affected and how badly; the authority above declares the activation level.</li>
+      <li><b>15–30 min — Notify &amp; mobilize:</b> launch the notification/call tree (§6); convene the ${pub?"EOC / command":"incident command"} team; assign recovery leads.</li>
+      <li><b>30–60 min — Stabilize &amp; communicate:</b> contain the incident; issue the first internal and external message; begin recovery of Wave 0 functions (§7).</li>
+    </ul>`);
+
+  // 5. Roles / succession
+  html+=sec(pub?"5. Orders of succession &amp; delegations of authority":"5. Continuity organization &amp; roles",pub?`<p>Per FCD 1, succession is pre-designated at least three deep for each key position; delegations of authority pre-authorize successors to act.</p>
+    <ul><li><b>Agency Head</b> → Deputy → Division Director (orders of succession, 3 deep)</li>
+    <li><b>${esc(S.owner)}</b> — Continuity Coordinator: activates and runs the COOP</li>
+    <li><b>EOC / Operations Lead</b> — directs response and resource allocation</li>
+    <li><b>Public Information Officer</b> — all internal and external communication</li>
+    <li><b>Delegations of authority</b> pre-documented for procurement, HR actions, and emergency spending</li>
+    <li><b>Function recovery leads</b> — named per recovery procedure in §8</li></ul>`:`<p>The following roles are activated on a Level 2 or 3 event:</p>
+    <ul><li><b>${esc(S.owner)}</b> — BC Coordinator: declares activation, owns the plan and the recovery effort</li>
+    <li><b>Executive Sponsor</b> — strategic decisions, external/legal authority, funding</li>
+    <li><b>Incident Commander</b> — runs the operational response and resource decisions</li>
+    <li><b>Communications Lead</b> — staff, customer, partner, and regulator messaging</li>
+    <li><b>IT/Recovery Lead</b> — technical recovery and data restoration</li>
+    <li><b>Function recovery leads</b> — named per recovery procedure in §8 (primary + backup)</li></ul>`);
+
+  // 6. Notification & call tree
+  html+=sec("6. Notification, escalation &amp; call tree",`<ul>
+    <li><b>Tier 1 (0–15 min):</b> ${pub?"Agency Head / Continuity Coordinator and EOC team":"BC Coordinator, Executive Sponsor, Incident Commander"}.</li>
+    <li><b>Tier 2 (15–30 min):</b> function recovery leads for affected functions; ${pub?"PIO":"Communications Lead"}; IT/Recovery Lead.</li>
+    <li><b>Tier 3 (30–60 min):</b> all affected staff, ${pub?"partner agencies and state EOC":"key vendors, partners"}, and regulators where required.</li>
+    <li><b>Method:</b> ${pub?"emergency notification system + staff call tree, with backup phone bridge":"mass-notification (SMS/email/app) with a backup phone bridge if primary channels are down"}.</li>
+    <li><b>Confirmation:</b> recipients acknowledge receipt; unreachable contacts trigger their named backup.</li></ul>
+    <p style="color:var(--muted);font-size:13px">Maintain the full contact roster and backups as an appendix (import via the staff-roster CSV).</p>`);
+
+  // 7. Recovery sequence
+  const tier=(label,arr,color)=>arr.length?`<div class="seq-tier" style="border-color:${color}"><div class="t">${label} <span style="color:var(--muted);font-weight:500">(${arr.length})</span></div><div style="font-size:13px;color:var(--ink2)">${arr.map(x=>x.func).join(" · ")}</div></div>`:"";
+  html+=sec("7. Recovery sequence &amp; priorities",`<p>Functions are restored in waves by recovery time objective. Earlier waves must not be starved of resources by later ones.</p>${tier("Wave 0 — Immediate / &lt;1 hr",t0,"#dc2626")}${tier("Wave 1 — Within 8 hours",t1,"#b45309")}${tier("Wave 2 — Within 24 hours",t2,"#1d4ed8")}${tier("Wave 3 — Beyond 24 hours",t3,"#64748b")}`);
+
+  // 8. Recovery procedures (per function) — the core
+  let cards=byRTO.map(f=>recCard(S.bia.indexOf(f))).join("");
+  html+=sec("8. Recovery procedures — one per "+(pub?"MEF":"process")+` (${S.bia.length})`,`<p>A complete recovery procedure for every function: strategy, step-by-step procedure, the backup/alternate process if the primary is unavailable, dependencies, resources, and named owners. Critical and high functions are expanded; click any to collapse.</p>${cards||'<p style="color:var(--muted)">No functions — add them in the BIA.</p>'}`);
+
+  // 9. Resource requirements
+  const allApps=[];S.bia.forEach(f=>f.apps.forEach(a=>allApps.push(a)));
+  const t1apps=[...new Set(allApps.filter(a=>a.tier==="Tier 1").map(a=>a.name))];
+  const peopleCount=S.bia.reduce((s,f)=>s+f.people.length,0);
+  html+=sec("9. Resource requirements",`<ul>
+    <li><b>People:</b> ${peopleCount} named across functions; every critical function needs a primary and a backup (see §8). ${spof.length?`<span style="color:var(--amber)"><b>${spof.length} function(s) currently have a single point of failure</b> — one or no backup.</span>`:"All functions have a backup mapped."}</li>
+    <li><b>Technology:</b> ${allApps.length} systems mapped${t1apps.length?`; Tier 1 / must-recover-first: ${t1apps.slice(0,10).map(n=>`<span class="pill app">${esc(n)}</span>`).join(" ")}`:""}.</li>
+    <li><b>Facilities:</b> alternate work location(s) and equipment sufficient for the recovery teams above.</li>
+    <li><b>Vital records:</b> the data and documents each function needs, held offsite and restorable to its RPO.</li></ul>`);
+
+  // 10. Vendors / third parties
+  const vRows=[];S.bia.forEach(f=>(f.vendors||[]).forEach(v=>{if((v.name||"").trim())vRows.push({...v,fn:f.func,frto:Number(f.rto),crit:f.crit});}));
+  let vTable="";
+  if(vRows.length){
+    vRows.sort((a,b)=>CRIT_ORDER[a.crit]-CRIT_ORDER[b.crit]);
+    vTable=`<div style="overflow-x:auto"><table><thead><tr><th>Vendor</th><th>Provides</th><th>Supports</th><th>Your RTO</th><th>Their RTO</th><th>Alternate</th><th>Exposure</th></tr></thead><tbody>${vRows.map(v=>{
+      const vr=(v.rto===""||v.rto==null)?null:Number(v.rto);
+      const gap=vr!=null&&vr>v.frto&&_isCrit(v.crit);
+      const noAlt=_isCrit(v.crit)&&v.alt==="No";
+      const exp=gap?`<span style="color:var(--red);font-weight:700">Can't meet RTO</span>`:noAlt?`<span style="color:var(--amber);font-weight:700">No alternate</span>`:`<span style="color:var(--green)">OK</span>`;
+      return `<tr><td><b>${esc(v.name)}</b></td><td>${esc(v.service||"—")}</td><td>${esc(v.fn)} <span class="crit ${critClass(v.crit)}" style="font-size:9px">${v.crit}</span></td><td>${fmtH(v.frto)}</td><td>${vr!=null?fmtH(vr):"—"}</td><td>${esc(v.alt&&v.alt!=="Alt?"?v.alt:"—")}</td><td>${exp}</td></tr>`;
+    }).join("")}</tbody></table></div>`;
+  }
+  if(pub){
+    html+=sec("10. Interdependencies, mutual aid &amp; supporting resources",`<p>Under FEMA CPG 101 / FCD 1, essential functions rarely stand alone. Identify and pre-arrange the support each one needs before an incident:</p>
+      <ul>
+        <li><b>Internal interdependencies:</b> which Mission Essential Functions rely on each other, and in what order they must be restored.</li>
+        <li><b>External interdependencies:</b> partner agencies, utilities, and neighboring jurisdictions your functions depend on.</li>
+        <li><b>Mutual aid:</b> pre-signed MOUs / MAAs and EMAC arrangements for personnel, equipment, and facilities.</li>
+        <li><b>Supporting resources:</b> the vital records, systems, and equipment each function needs, held and restorable per its recovery objective.</li>
+      </ul>`);
+  }else{
+  html+=sec("10. Vendor &amp; third-party continuity",`<p>A function is only as resilient as the suppliers behind it. For each critical external dependency: confirm the vendor's own continuity/DR commitment and SLA in writing, identify a pre-qualified alternate where switching is feasible, and hold emergency contacts and account details offsite.</p>
+    ${vTable||`<p style="color:var(--muted)">No vendors mapped yet — add third-party dependencies in the BIA mapping drawer to populate this register and the third-party risk analysis.</p>`}
+    ${vRows.some(v=>{const vr=(v.rto===""||v.rto==null)?null:Number(v.rto);return vr!=null&&vr>v.frto&&_isCrit(v.crit);})?`<p class="note warn" style="margin-top:12px"><b>Heads up:</b> one or more critical vendors have a slower recovery commitment than the function they support. Your real RTO for those functions is the vendor's, not yours — see the Resilience Analysis.</p>`:""}
+    ${t1apps.length?`<p style="margin-top:12px"><b>Externally-hosted Tier 1 systems to confirm coverage for:</b> ${t1apps.slice(0,12).map(n=>`<span class="pill app">${esc(n)}</span>`).join(" ")}</p>`:""}`);
+  }
+
+  // 11. Data backup & restoration
+  html+=sec("11. Data backup &amp; restoration",`<ul>
+    <li><b>Backup frequency</b> must meet each function's RPO — the tightest here is <b>${fmtH(minRPO)}</b>, so the most critical data needs ${minRPO==0?"continuous replication":("backups at least every "+fmtH(minRPO))}.</li>
+    <li><b>Offsite / immutable copies</b> protected from the same event (and from ransomware).</li>
+    <li><b>Restoration is tested</b> on a schedule — an untested backup is an assumption, not a control.</li>
+    <li><b>Restore priority</b> follows the recovery sequence in §7.</li></ul>`);
+
+  // 12. Alternate facilities & work arrangements
+  html+=sec("12. Alternate facilities &amp; work arrangements",`<ul>
+    <li><b>${pub?"Alternate / relocation facility":"Recovery site"}:</b> pre-identified and reachable within RTO${LARGE_SIZES.includes(S.size)?", geographically separated from primary sites":""}.</li>
+    <li><b>Remote / dispersed work:</b> ${(S.industry==="manufacturing"||S.industry==="energy"||S.industry==="healthcare"||pub)?"limited where operations are site-dependent — cross-train and stage backup crews":"primary strategy for knowledge work; VPN, devices, and access pre-provisioned"}.</li>
+    <li><b>Equipment &amp; connectivity</b> staged or rapidly procurable for the recovery teams.</li></ul>`);
+
+  // 13. Return to normal
+  html+=sec("13. Return to normal / reconstitution",`<ul>
+    <li><b>Stand-down criteria:</b> affected functions operating at acceptable levels and the threat resolved.</li>
+    <li><b>Reconstitution:</b> ${pub?"return from the alternate facility, validate systems, and formally transfer authority back per FCD 1":"return from recovery site/mode, validate systems, and reconcile any backlog or data gap"}.</li>
+    <li><b>Decision authority:</b> ${pub?"Agency Head / Continuity Coordinator":"BC Coordinator with Executive Sponsor"} declares the return to normal.</li>
+    <li><b>Capture lessons learned</b> in the After Action Report (next step).</li></ul>`);
+
+  // 14. Compliance mapping
+  html+=sec("14. Compliance mapping",`<p>How this plan satisfies your in-scope obligations:</p><ul>${S.regs.map(r=>`<li><b>${r}:</b> ${regMap(r)}</li>`).join("")}</ul>`);
+
+  // 15. Maintenance & testing
+  html+=sec("15. Plan maintenance, testing &amp; exercise schedule",`<ul>
+    <li><b>Review</b> at least annually (next review: ${esc(dc.review||"set in §0")}) and after any activation or major change.</li>
+    <li><b>Exercise cycle (${pub?"FEMA HSEEP":"recommended"}):</b> tabletop quarterly → functional exercise annually → full-scale exercise as resources allow.</li>
+    <li><b>Corrective actions</b> from every exercise are tracked to closure in the AAR with owners and due dates.</li>
+    <li><b>Version control:</b> changes recorded in §0 with approver and date.</li></ul>
+    <p style="color:var(--muted);font-size:13px">Next: run the tabletop exercise to pressure-test this plan.</p>`);
+
+  S.bcp={t0,t1,t2,t3,crit,spof:spof.length};
+  document.getElementById("bcpContent").innerHTML=html;save();go("bcp");
+}
+function logVersion(){
+  const v=S.docctl;if(!v)return;
+  const parts=String(v.version||"1.0").split("."),maj=parseInt(parts[0]||"1")||1,min=(parseInt(parts[1]||"0")||0)+1;
+  v.version=maj+"."+min;v.history=v.history||[];
+  v.history.unshift({version:v.version,date:new Date().toISOString().slice(0,10),author:v.approver||S.owner||"",change:""});
+  save();buildBCP();
+}
+function addSignoff(){S.docctl.signoffs=S.docctl.signoffs||[];S.docctl.signoffs.push({role:"Approver",name:"",title:"",date:"",signed:false});save();buildBCP();}
+function ensureRec(){
+  S.bia.forEach(f=>{
+    if(!f.rec){const t=recTemplate(f);
+      f.rec={strategy:t.strategy,steps:t.steps.slice(),backup:t.backup,deps:t.deps,resources:t.resources,
+        primary:(f.people[0]&&(f.people[0].name||f.people[0].role))||"",
+        backup_owner:(f.people[1]&&(f.people[1].name||f.people[1].role))||""};}
+  });
+}
+function recCard(i){
+  const f=S.bia[i],r=f.rec; if(!r)return"";
+  const spof=f.people.length<=1;
+  const owner=r.primary||(f.people[0]&&(f.people[0].name||f.people[0].role))||"";
+  const back=r.backup_owner||(f.people[1]&&(f.people[1].name||f.people[1].role))||"";
+  const open=(f.crit==="Critical"||f.crit==="High");
+  const steps=(r.steps||[]).join("\n").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  return `<div class="rec-card${open?'':' collapsed'}">
+    <div class="rec-h" onclick="this.parentNode.classList.toggle('collapsed')">
+      <span class="crit ${critClass(f.crit)}">${f.crit}</span>
+      <span class="rec-name">${esc(f.func)}</span>
+      <span class="rec-meta">${esc(f.dept)} · RTO ${fmtH(f.rto)} · RPO ${fmtH(f.rpo)}</span>
+      ${spof?'<span class="spof">⚠ Single point of failure</span>':''}
+    </div>
+    <div class="rec-b">
+      <div class="rec-grid">
+        <div><label class="rec-l">Recovery strategy</label><span class="rec-hint">The overall approach to get this function working again — e.g. fail over to a backup site, switch to a manual workaround, or activate a vendor/mutual-aid agreement. One or two sentences.</span><textarea onchange="S.bia[${i}].rec.strategy=this.value;save()">${esc(r.strategy)}</textarea></div>
+        <div><label class="rec-l">Backup / alternate process</label><span class="rec-hint">How the work still gets done while the normal method is down — the manual process, alternate site, or standby tool people fall back to.</span><textarea onchange="S.bia[${i}].rec.backup=this.value;save()">${esc(r.backup)}</textarea></div>
+      </div>
+      <label class="rec-l">Recovery procedure — step by step (one per line)</label>
+      <span class="rec-hint">The ordered actions your team takes, from the moment the disruption is detected through to full restoration. Put one action on each line — the plan numbers them for you.</span>
+      <textarea class="rec-steps" onchange="S.bia[${i}].rec.steps=this.value.split('\\n').filter(x=>x.trim())">${steps}</textarea>
+      <div class="rec-grid">
+        <div><label class="rec-l">Dependencies (systems · vendors · other functions)</label><span class="rec-hint">What this function needs in place to recover — key systems, third-party vendors, and any other function that must be running first.</span><textarea onchange="S.bia[${i}].rec.deps=this.value;save()">${esc(r.deps)}</textarea></div>
+        <div><label class="rec-l">Resources required</label><span class="rec-hint">The people, equipment, facilities, licenses, and access needed to actually carry out the recovery steps.</span><textarea onchange="S.bia[${i}].rec.resources=this.value;save()">${esc(r.resources)}</textarea></div>
+      </div>
+      <div class="rec-grid">
+        <div><label class="rec-l">Primary owner</label><span class="rec-hint">The person accountable for leading this function's recovery.</span><input type="text" value="${esc(owner)}" placeholder="Name / role" onchange="S.bia[${i}].rec.primary=this.value;save()"></div>
+        <div><label class="rec-l">Backup owner ${spof?'<span style="color:var(--amber)">— none mapped (SPOF)</span>':''}</label><span class="rec-hint">The cross-trained deputy who takes over if the primary owner is unavailable. If this is blank, the function has a single point of failure.</span><input type="text" value="${esc(back)}" placeholder="Name / role" onchange="S.bia[${i}].rec.backup_owner=this.value;save()"></div>
+      </div>
+      ${f.apps.length?`<div style="margin-top:6px"><span class="rec-l" style="display:inline">Supporting systems:</span> ${f.apps.map(a=>`<span class="pill app">${esc(a.name)} (${a.tier})</span>`).join(" ")}</div>`:""}
+    </div>
+  </div>`;
+}
+function sec(title,body){return `<div class="bcp-sec"><h4 onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">▾ ${title}</h4><div class="body">${body}</div></div>`;}
+function recTemplate(f){
+  const fn=(f.func+" "+f.dept).toLowerCase();
+  const T=(strategy,steps,backup,deps,resources)=>({strategy,steps,backup,deps,resources});
+  if(/platform|hosting|saas|tenant|ingestion|pipeline|grid|scada|plant|production|control center|generation/.test(fn))
+    return T("Fail over to redundant/standby infrastructure and restore service from the last known-good state.",
+      ["Declare incident and assemble the recovery team (primary + backup on-call).",
+       "Isolate the failed component; confirm scope and blast radius via monitoring.",
+       "Fail over to the standby region / redundant cluster; verify health checks pass.",
+       "If failover is unavailable, rebuild from infrastructure-as-code at the alternate site.",
+       "Validate data integrity to the RPO; replay queued or buffered data.",
+       "Confirm service restored against SLA, notify stakeholders, begin post-incident review."],
+      "Degraded mode: serve read-only or cached state while the redundant standby cluster carries load and the primary is rebuilt.",
+      "Cloud provider (AWS/Azure/GCP), DNS, identity/SSO, network connectivity, IaC repository.",
+      "On-call SRE (primary + backup), standby capacity in an alternate region, runbook access.");
+  if(/ehr|record|ledger|core|data|vital|database|reporting/.test(fn))
+    return T("Restore from the replicated system or most recent backup within the RPO; operate on downtime procedures meanwhile.",
+      ["Switch users to the replicated/standby instance if available.",
+       "If unavailable, initiate restore from the latest backup meeting the RPO.",
+       "Activate manual / paper downtime procedures for staff during restoration.",
+       "Verify restored data integrity and reconcile any gap since the last backup.",
+       "Return users to the primary system; re-key downtime entries.",
+       "Document any data loss and report per compliance obligations."],
+      "Downtime procedures: paper forms or an offline cache; designated staff re-enter data once systems are restored.",
+      "Backup/replication system, storage, identity/access, the applications that consume this data.",
+      "Data owner / DBA (primary + backup), validated backups, downtime forms, restoration runbook.");
+  if(/payment|pos|billing|settl|invoice|revenue|procurement|payroll|treasury|reconcil/.test(fn))
+    return T("Switch to a backup processor or offline capture; reconcile all transactions once systems are restored.",
+      ["Activate the backup payment processor or offline capture mode.",
+       "Queue transactions securely for later processing.",
+       "Notify finance and affected customers of the interim process.",
+       "Process the queued backlog once the primary is restored.",
+       "Reconcile all interim transactions against records.",
+       "Confirm no duplicate or dropped transactions."],
+      "Offline capture or a secondary processor; a manual interim run for payroll/procurement with a later true-up.",
+      "Payment processor, banking partners, ERP/finance system, identity.",
+      "Finance lead (primary + backup), backup processor access, reconciliation checklist.");
+  if(/identity|sso|iam|access management/.test(fn))
+    return T("Restore the identity provider from standby; use break-glass emergency accounts for critical access only.",
+      ["Confirm the IdP outage scope; switch to the secondary IdP/region if available.",
+       "Activate pre-provisioned break-glass accounts for critical systems only.",
+       "Restrict access to essential personnel during the degraded state.",
+       "Restore the primary IdP and re-enable normal authentication.",
+       "Rotate any break-glass credentials that were used.",
+       "Audit all access granted during the window."],
+      "Sealed break-glass / local emergency accounts; a secondary identity-provider region.",
+      "Identity provider (Okta/Entra), directory, MFA provider, and every downstream application.",
+      "IAM owner (primary + backup), sealed break-glass credentials, audit-log access.");
+  if(/security|soc|fraud|monitor|surveil|threat|incident response/.test(fn))
+    return T("Maintain monitoring via redundant tooling and on-call analysts; apply manual controls at critical points.",
+      ["Activate the secondary monitoring/SIEM feed or managed-SOC failover.",
+       "Stand up on-call analyst coverage (primary + backup).",
+       "Apply heightened manual controls at high-risk entry points.",
+       "Preserve logs and evidence for the disruption window.",
+       "Restore primary monitoring and validate that coverage gaps were filled.",
+       "Review any events that may have been missed."],
+      "Managed SOC or a secondary SIEM; manual guard posts and access checks at critical sites.",
+      "SIEM, threat feeds, identity, network taps, physical access systems.",
+      "CISO / SOC lead (primary + backup), secondary tooling access, escalation contacts.");
+  if(/support|service|contact|dispatch|911|alert|warning|communication|public information|notification/.test(fn))
+    return T("Reroute contacts to an alternate site or overflow with backup telephony and documented scripts.",
+      ["Reroute inbound channels to the alternate site or overflow queue.",
+       "Activate backup telephony / cloud contact center.",
+       "Brief staff with current scripts and known-issue messaging.",
+       "Publish status updates on the agreed external channel.",
+       "Monitor volume and escalate staffing as needed.",
+       "Return to the primary site and capture lessons learned."],
+      "Overflow / alternate contact site; backup telephony; pre-written holding statements.",
+      "Telephony / contact platform, status page, knowledge base, staffing.",
+      "Support / PIO lead (primary + backup), backup telephony access, message templates.");
+  if(/supply|logistics|warehouse|fulfil|ship|food|water distribution|fuel|shelter|mass care|materials|inventory/.test(fn))
+    return T("Activate pre-qualified alternate suppliers/carriers and draw down safety stock; track manually if systems are down.",
+      ["Activate pre-qualified alternate supplier / carrier agreements.",
+       "Draw down safety stock or staged resources to bridge the gap.",
+       "Switch to manual order / inventory tracking if systems are down.",
+       "Prioritize allocation to critical or at-risk recipients.",
+       "Restore systems and reconcile the manual records.",
+       "Replenish safety stock and review supplier performance."],
+      "Alternate suppliers, safety stock, manual tracking sheets, mutual-aid agreements.",
+      "Inventory/WMS, supplier portals, logistics carriers, transportation.",
+      "Supply chain lead (primary + backup), alternate supplier contacts, safety-stock location.");
+  if(/power|hvac|facility|utility|energy|transport|road|transit|water systems|sanitation|wastewater|drinking water/.test(fn))
+    return T("Switch to backup generation/UPS and pre-staged crews; invoke mutual-aid agreements for extended events.",
+      ["Switch to backup generation / UPS; confirm fuel levels.",
+       "Dispatch pre-staged crews and equipment to affected sites.",
+       "Invoke mutual-aid agreements for extended or large events.",
+       "Prioritize restoration to life-safety and critical loads.",
+       "Coordinate with utilities and emergency management.",
+       "Restore the primary supply and stand down backup systems."],
+      "Backup generators/UPS, fuel supply, mutual-aid partners, utilities, transportation.",
+      "Facilities / utility lead (primary + backup), generators, fuel contracts, crew roster.");
+  if(/succession|leadership|governance|continuity of government/.test(fn))
+    return T("Activate pre-designated successors (three deep) and delegations of authority immediately.",
+      ["Confirm availability of the primary leader; if unavailable, notify the first successor.",
+       "Activate the delegations of authority for the assumed role.",
+       "Communicate the change of authority to staff and partners.",
+       "Maintain a decision log under the acting authority.",
+       "Restore normal leadership and formally transfer authority back.",
+       "Review and update the order of succession if gaps appeared."],
+      "Pre-designated successors (3 deep) and documented delegations of authority.",
+      "Succession roster, delegation documents, secure communications.",
+      "Successors (3 deep), delegation paperwork, notification channel.");
+  if(/clinical|patient|emergency patient|medication|pharmacy|lab|diagnostic|health|medical/.test(fn))
+    return T("Maintain patient care via downtime clinical procedures and divert or surge where capacity is lost.",
+      ["Initiate clinical downtime procedures; switch to paper charting if EHR is down.",
+       "Triage and, if needed, divert or transfer patients to maintain safety.",
+       "Secure backup supplies, medication, and power for life-support.",
+       "Restore systems and reconcile downtime documentation.",
+       "Account for all patients and treatments during the window.",
+       "Debrief clinical staff and capture lessons learned."],
+      "Downtime clinical procedures; diversion/transfer agreements; backup supplies and power.",
+      "EHR/clinical systems, pharmacy, supplies, medical gas/power, identity.",
+      "Clinical recovery lead (primary + backup), downtime kits, mutual-aid hospital contacts.");
+  return T("Recover via cross-trained backup staff and a documented manual workaround; restore to the alternate site within RTO.",
+    ["Notify the function owner and backup; convene the recovery team.",
+     "Assess impact and switch to the documented manual workaround.",
+     "Recover the supporting systems or relocate to the alternate site.",
+     "Validate the function is operating to the required level.",
+     "Return to normal operations and reconcile any backlog.",
+     "Capture lessons learned and update this procedure."],
+    "A documented manual workaround performed by cross-trained backup staff.",
+    "Supporting applications, key personnel, alternate workspace, vendors.",
+    "Function owner (primary + backup), workaround instructions, alternate workspace.");
+}
+function regMap(r){const m={
+  "ISO 22301":"Full BCMS lifecycle is documented here.","ISO 22317 (BIA)":"The BIA quantifies impact over time and sets RTO/RPO.","NIST SP 800-34":"Contingency planning: BIA, controls, recovery, testing.","SOC 2":"Availability criteria evidenced by tested recovery.","GDPR":"Availability/resilience of personal-data systems.","CCPA":"Availability and integrity of consumer-data systems.","ISO 27001":"Supports A.5.29/A.5.30 continuity controls.","HIPAA":"Satisfies the Contingency Plan standard (§164.308(a)(7)).","HITECH":"Reinforces HIPAA continuity and breach-resilience.","Joint Commission EM":"Supports Emergency Management standards.","CMS Emergency Prep":"Meets the CMS Emergency Preparedness Rule.","SOX":"Protects availability of financial-reporting systems.","GLBA":"Safeguards continuity of customer financial data.","PCI-DSS":"Maintains secure, available cardholder-data environments.","FFIEC":"Aligns to FFIEC BCM guidance.","DORA":"Supports digital operational resilience & ICT testing.","Basel III":"Underpins operational-risk resilience.","ISO 9001":"Maintains quality-process continuity.","OSHA":"Protects worker safety in emergencies.","IEC 62443 (OT)":"Supports OT/ICS resilient recovery.","EPA":"Environmental-control continuity & response.","FERPA":"Availability/integrity of student records.","Clery Act":"Timely emergency notification obligations.","NFPA 1600":"This plan follows the NFPA 1600 framework.","NERC CIP":"Recovery/continuity of BES cyber assets.","FERC":"Reliability & continuity for regulated utilities.","TSA Pipeline Security":"Continuity/recovery of pipeline operations.","FEMA CPG 101":"Plan structure follows the CPG 101 process and content.","FCD 1 / FCD 2":"Includes MEFs, succession, delegations, alternate facilities, vital records.","NIMS / ICS":"Response organized under NIMS/ICS.","Continuity Guidance Circular":"Implements CGC guidance for non-federal entities.","Stafford Act":"Aligns to federal disaster-assistance coordination."};
+  return m[r]||"Addressed by the continuity controls in this plan.";}
+
+/* ============ STEP 4: TEST ============ */
+function buildTest(){
+  document.getElementById("scenarioGrid").innerHTML=SCENARIOS.map(s=>`<div class="scenario-card ${S.scenario===s.id?'on':''}" onclick="pickScenario('${s.id}')"><div class="ico">${s.ico}</div><div class="t">${s.t}</div><div class="d">${s.d}</div></div>`).join("");
+  if(S.scenario)renderExercise();go("test");
+}
+function pickScenario(id){S.scenario=id;S.injects=[];document.querySelectorAll(".scenario-card").forEach(c=>c.classList.remove("on"));if(typeof event!=="undefined"&&event.currentTarget)event.currentTarget.classList.add("on");renderExercise();save();}
+function affected(scn){const sc=SCENARIOS.find(s=>s.id===scn);return S.bia.filter(f=>sc.hits.some(h=>(f.func+" "+f.dept).toLowerCase().includes(h.toLowerCase())));}
+function renderExercise(){
+  const sc=SCENARIOS.find(s=>s.id===S.scenario),aff=affected(S.scenario);
+  const sorted=aff.slice().sort((a,b)=>CRIT_ORDER[a.crit]-CRIT_ORDER[b.crit]);
+  const topFn=sorted.length?sorted[0].func:"a critical function";
+  const ppl=aff.reduce((s,x)=>s+x.people.length,0);
+  const injects=[
+    ["T + 0 min",`${sc.t} confirmed. ${aff.length} of your functions are potentially affected — including ${topFn}. Who do you notify and what do you activate first?`],
+    ["T + 30 min",`Assessment in: ${aff.filter(f=>f.crit==="Critical").length} critical functions degraded. Media/staff are asking. What is your first communication and who sends it?`],
+    ["T + 2 hrs",`Sustained disruption — your tightest RTO (${aff.length?fmtH(Math.min(...aff.map(x=>Number(x.rto)))):"<1 hr"}) is breached. Are recovery strategies working? What workaround is in play?`],
+    ["T + 8 hrs",`Resources stretched, fatigue setting in. A key person of the ${ppl} mapped to affected functions is unreachable. Does succession/cross-training hold?`],
+    ["T + 24 hrs",`Partial recovery achieved. Leadership wants a stand-down decision and status report. What is recovered and what is still open?`]];
+  if(!S.injects.length)S.injects=injects.map(i=>({time:i[0],ev:i[1],resp:""}));
+  document.getElementById("exerciseArea").innerHTML=`<div class="note"><b>${sc.ico} ${sc.t}.</b> ${aff.length} of your ${S.bia.length} functions are in the blast radius${ppl?`, involving ${ppl} mapped staff`:""}. Work each inject — gaps you note become corrective actions in the AAR.</div>${S.injects.map((inj,i)=>`<div class="inject"><div class="time">${inj.time}</div><div class="ev">${inj.ev}</div><label class="fld">Decision / response</label><span class="field-hint">Type what your team would actually do at this moment — who acts, what they switch to, who they notify. Be honest about anything that would break, stall, or depend on one unavailable person; those become corrective actions.</span><textarea onchange="S.injects[${i}].resp=this.value;save()" placeholder="What did the team decide? Note any gap, delay, or assumption that failed...">${esc(inj.resp)}</textarea></div>`).join("")}`;
+  document.getElementById("toAARBtn").style.display="block";
+}
+
+/* ============ STEP 5: AAR ============ */
+function buildAAR(){
+  const sc=SCENARIOS.find(s=>s.id===S.scenario),aff=affected(S.scenario);
+  const pub=S.sector==="public";
+  const POETE=["Planning","Organization","Equipment","Training","Exercises"];
+  if(!S.aar){
+    const actions=S.injects.filter(i=>i.resp.trim()).map(i=>({action:"Address gap noted at "+i.time,owner:"",due:"",pri:"Medium"}));
+    if(!actions.length)actions.push({action:"Document and close gaps identified in the exercise",owner:"",due:"",pri:"Medium"});
+    const top=aff.slice().sort((a,b)=>CRIT_ORDER[a.crit]-CRIT_ORDER[b.crit])[0];
+    S.aar={strengths:"Plan activated and roles were clear. Recovery sequence prioritized the right functions. Communications cadence held.",
+      improve:`Recovery of ${top?top.func:"critical functions"} took longer than target RTO. Dependence on key personnel created single points of failure. External communication needs a faster first message.`,
+      rating:(pub?"Performed with Some Challenges (S)":"Partially Effective"),actions};
+  }
+  const a=S.aar;
+  const at=document.getElementById("aarTitle");if(at)at.textContent=pub?"After-Action Report / Improvement Plan (AAR/IP)":"After Action Report";
+  document.getElementById("aarSub").textContent=`${sc?sc.t:"Exercise"} · ${S.orgName} · ${pub?"FEMA HSEEP format":"ISO 22301 review"}. Edit findings and assign corrective actions.`;
+  document.getElementById("aarContent").innerHTML=`
+    <div class="stat-row">
+      <div class="stat"><div class="n">${sc?sc.ico:"—"}</div><div class="l">${sc?sc.t:""}</div></div>
+      <div class="stat"><div class="n" style="color:var(--accent)">${aff.length}</div><div class="l">Functions exercised</div></div>
+      <div class="stat"><div class="n">${S.injects.filter(i=>i.resp.trim()).length}/${S.injects.length}</div><div class="l">Injects worked</div></div>
+      <div class="stat"><div class="n" style="color:var(--amber)">${a.actions.length}</div><div class="l">Corrective actions</div></div></div>
+    <h3>Capability rating</h3>
+    <span class="field-hint">Your overall judgment of how well the plan and team performed in this exercise — the headline finding of the report.</span>
+    <div class="rating">${(pub?["Performed without Challenges (P)","Performed with Some Challenges (S)","Performed with Major Challenges (M)","Unable to be Performed (U)"]:["Effective","Partially Effective","Needs Improvement"]).map(r=>`<button class="${a.rating===r?'on':''}" onclick="S.aar.rating='${esc(r).replace(/'/g,"&#39;")}';buildAAR();save()">${r}</button>`).join("")}</div>
+    ${pub?'<span class="field-hint">HSEEP capability scale: P = performed without challenges · S = with some challenges · M = with major challenges · U = unable to be performed.</span>':''}
+    <h3>What worked (strengths)</h3>
+    <span class="field-hint">What the plan and the team did well and should keep doing — clear roles, fast decisions, correct recovery sequence.</span>
+    <textarea onchange="S.aar.strengths=this.value;save()">${esc(a.strengths)}</textarea>
+    <h3>Areas for improvement</h3>
+    <span class="field-hint">Where the response stalled, broke, or leaned on someone unavailable. Be specific — each of these should turn into a corrective action below.</span>
+    <textarea onchange="S.aar.improve=this.value;save()">${esc(a.improve)}</textarea>
+    <h3>${pub?"Improvement plan (corrective actions)":"Corrective action plan"}</h3>
+    <span class="field-hint">${pub?"HSEEP improvement plan: for each area for improvement, record the corrective action, its capability element (POETE — Planning, Organization, Equipment, Training, Exercises), the responsible organization, a point of contact, and start/completion dates.":"Turn each weakness into a concrete fix with a named owner and a due date, then track it to closure before the next exercise."}</span>
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th style="width:${pub?'28%':'42%'}">Corrective action</th>
+      ${pub?'<th>Capability element</th><th>Responsible org</th><th>POC</th><th>Start</th><th>Completion</th>':'<th>Owner</th><th>Due date</th>'}
+      <th>Priority</th><th></th></tr></thead>
+      <tbody>${a.actions.map((ac,i)=>`<tr>
+        <td><input type="text" value="${esc(ac.action)}" onchange="S.aar.actions[${i}].action=this.value;save()"></td>
+        ${pub?`<td><select onchange="S.aar.actions[${i}].poete=this.value;save()"><option value="">—</option>${POETE.map(p=>`<option ${p===ac.poete?'selected':''}>${p}</option>`).join("")}</select></td>
+        <td><input type="text" value="${esc(ac.org||'')}" placeholder="Lead org" onchange="S.aar.actions[${i}].org=this.value;save()"></td>
+        <td><input type="text" value="${esc(ac.poc||'')}" placeholder="Name" onchange="S.aar.actions[${i}].poc=this.value;save()"></td>
+        <td><input type="date" value="${esc(ac.start||'')}" onchange="S.aar.actions[${i}].start=this.value;save()"></td>
+        <td><input type="date" value="${esc(ac.due)}" onchange="S.aar.actions[${i}].due=this.value;save()"></td>`:`<td><input type="text" value="${esc(ac.owner)}" placeholder="Assign…" onchange="S.aar.actions[${i}].owner=this.value;save()"></td>
+        <td><input type="date" value="${esc(ac.due)}" onchange="S.aar.actions[${i}].due=this.value;save()"></td>`}
+        <td><select onchange="S.aar.actions[${i}].pri=this.value;save()">${["High","Medium","Low"].map(p=>`<option ${p===ac.pri?'selected':''}>${p}</option>`).join("")}</select></td>
+        <td><button class="iconbtn no-print" onclick="S.aar.actions.splice(${i},1);buildAAR();save()">✕</button></td></tr>`).join("")}</tbody></table></div>
+    <button class="addbtn no-print" onclick="S.aar.actions.push({action:'',owner:'',due:'',pri:'Medium'});buildAAR();save()">+ Add corrective action</button>
+    <div class="note no-print" style="margin-top:22px"><b>Full cycle complete.</b> Profile → BIA → plan → tested → corrective actions. Hit <b>Export</b> below to print the whole package as a PDF.</div>`;
+  go("aar");
+}
+
+/* ============ PERSISTENCE ============ */
+function save(){try{localStorage.setItem("cb_state",JSON.stringify(S));localStorage.setItem("cb_step",maxStep)}catch(e){}}
+/* ---- Branded cover page, printed only in PDF/print output ---- */
+function fillCover(){
+  try{
+    const pbEl=document.getElementById("preparedBy");
+    const pb=(pbEl&&pbEl.value)||S.preparedBy||"";
+    S.preparedBy=pb;
+    const c=SECTOR_CFG[S.sector]||{planTitle:"Business Continuity Plan"};
+    const dc=S.docctl||{};
+    const cover=document.getElementById("printCover");
+    if(!cover)return;
+    cover.innerHTML=
+      '<div style="display:flex;flex-direction:column;justify-content:center;min-height:90vh;text-align:center;padding:40px">'
+      +'<div style="font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#64748b">'+(esc(S.orgName)||"Organization")+'</div>'
+      +'<h1 style="font-size:36px;margin:20px 0 10px;letter-spacing:-.02em">'+esc(c.planTitle||"Business Continuity Plan")+'</h1>'
+      +'<div style="font-size:15px;color:#334155">'+(S.sector==="public"?"FEMA CPG 101 / COOP":"ISO 22301 / 22317")+'</div>'
+      +'<div style="margin-top:64px;font-size:14px;color:#334155;line-height:2">'
+      +(dc.version?("Version "+esc(dc.version)+"<br>"):"")
+      +(dc.date?("Effective "+esc(dc.date)+"<br>"):"")
+      +(dc.classification?(esc(dc.classification)+"<br>"):"")
+      +(pb?('<br>Prepared by<br><b style="font-size:16px;color:#0f172a">'+esc(pb)+'</b>'):"")
+      +'</div></div>';
+  }catch(e){}
+}
+if(typeof window!=="undefined"&&window.addEventListener)window.addEventListener("beforeprint",fillCover);
+/* ---- Save / load the whole engagement to a portable file (survives cache-clear & moves between machines) ---- */
+function loadPrompt(){
+  if(confirm("Load a saved engagement?\n\nChoose the .json file you previously downloaded using “Save engagement”. It will replace what's on screen now and restore that engagement exactly where you left off.\n\n(If you haven't saved one yet, click Cancel — there's nothing to load.)\n\nClick OK to choose the file.")){
+    document.getElementById("sessionFile").click();
+  }
+}
+function exportSession(){
+  try{
+    const data=JSON.stringify({app:"continuity-builder",version:1,savedAt:new Date().toISOString(),cb_state:S,cb_step:maxStep});
+    const blob=new Blob([data],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=((S.orgName||"continuity").replace(/[^a-z0-9]+/gi,"-").replace(/^-+|-+$/g,"").toLowerCase()||"continuity")+"-engagement.json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }catch(e){alert("Could not export the engagement file.");}
+}
+function importSession(input){
+  const f=input.files[0];if(!f)return;input.value="";
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      const state=d&&d.cb_state?d.cb_state:d;
+      if(!state||typeof state!=="object"||!("sector"in state)){alert("That file isn't a valid Continuity Builder engagement file.");return;}
+      localStorage.setItem("cb_state",JSON.stringify(state));
+      localStorage.setItem("cb_step",(d&&d.cb_step!=null)?d.cb_step:0);
+      location.reload();
+    }catch(e){alert("That file isn't a valid engagement file (couldn't read the JSON).");}
+  };
+  rd.readAsText(f);
+}
+function load(){try{
+  const raw=localStorage.getItem("cb_state");if(!raw)return;const d=JSON.parse(raw);Object.assign(S,d);
+  document.getElementById("orgName").value=S.orgName||"";document.getElementById("owner").value=S.owner||"";
+  if(document.getElementById("preparedBy"))document.getElementById("preparedBy").value=S.preparedBy||"";
+  document.getElementById("industry").value=S.industry==="government"?"technology":S.industry;
+  applySector();
+  document.querySelectorAll("#sizeChips .chip").forEach(c=>c.classList.toggle("on",c.textContent===S.size));
+  renderDepts();renderRegs();
+}catch(e){}}
+
+init();
+</script>
+</body>
+</html>
