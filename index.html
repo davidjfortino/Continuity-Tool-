@@ -221,8 +221,9 @@
   <div class="top-inner">
     <div class="brand"><div class="logo">◎</div><div>Continuity Builder<small>BIA → Analysis → BCP → Tabletop → AAR</small></div></div>
     <div class="spacer"></div>
-    <button class="btn ghost sm no-print" onclick="exportSession()" title="Download this whole engagement (profile, BIA, plan, exercise, AAR) as a .json file you can back up or reopen later">💾 Save engagement</button>
-    <button class="btn ghost sm no-print" onclick="loadPrompt()" title="Open a .json engagement file you previously saved with 'Save engagement' — it restores everything where you left off">📂 Load engagement</button>
+    <button class="btn ghost sm no-print" onclick="exportPlan()" title="Download the finished BCP plan you see on screen as a PDF — this is your document">⤓ Download plan (PDF)</button>
+    <button class="btn ghost sm no-print" onclick="exportSession()" title="Saves a backup file to reopen later with Resume. This is NOT your plan document — use 'Download plan (PDF)' for that.">💾 Save progress</button>
+    <button class="btn ghost sm no-print" onclick="loadPrompt()" title="Reopen a saved progress file to continue where you left off">📂 Resume</button>
     <input type="file" id="sessionFile" accept=".json,application/json" style="display:none" onchange="importSession(this)">
     <div class="fw-badge"><span class="fw-dot"></span><span id="fwBadge">Private · ISO 22301 / 22317</span></div>
   </div>
@@ -406,7 +407,7 @@
       <div class="navrow">
         <button class="btn ghost" onclick="go('analysis')">← Analysis</button>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn ghost" onclick="exportPlan()">⤓ Export plan (PDF)</button>
+          <button class="btn ghost" onclick="exportPlan()">⤓ Download plan (PDF) — your document</button>
           <button class="btn primary" onclick="buildTest()">Run a Tabletop Exercise →</button>
         </div>
       </div>
@@ -1636,7 +1637,7 @@ function fillCover(){
 if(typeof window!=="undefined"&&window.addEventListener)window.addEventListener("beforeprint",fillCover);
 /* ---- Save / load the whole engagement to a portable file (survives cache-clear & moves between machines) ---- */
 function loadPrompt(){
-  if(confirm("Load a saved engagement?\n\nChoose the .json file you previously downloaded using “Save engagement”. It will replace what's on screen now and restore that engagement exactly where you left off.\n\n(If you haven't saved one yet, click Cancel — there's nothing to load.)\n\nClick OK to choose the file.")){
+  if(confirm("Resume a saved engagement?\n\nChoose the .json progress file you previously downloaded using “Save progress”. It will replace what's on screen now and restore that engagement exactly where you left off.\n\n(This is only for continuing earlier work — it is NOT the plan document. If you haven't saved one yet, click Cancel.)\n\nClick OK to choose the file.")){
     document.getElementById("sessionFile").click();
   }
 }
