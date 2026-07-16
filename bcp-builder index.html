@@ -110,7 +110,7 @@
   .stat .l{font-size:12px;color:var(--muted);font-weight:500;margin-top:2px}
 
   .bcp-sec{border:1px solid var(--line);border-radius:14px;margin-bottom:14px;overflow:hidden}
-  .bcp-sec h4{margin:0;padding:14px 18px;background:#f8fafc;font-size:14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;cursor:pointer}
+  .bcp-sec h4{margin:0;padding:14px 18px;background:#f8fafc;font-size:14px;border-bottom:1px solid var(--line);border-left:4px solid var(--accent);display:flex;align-items:center;gap:10px;cursor:pointer}
   .bcp-sec .body{padding:18px}
   .bcp-sec .body p{margin:0 0 10px;font-size:14px;color:var(--ink2)}
   .bcp-sec ul{margin:0 0 6px;padding-left:20px;font-size:14px;color:var(--ink2)} .bcp-sec li{margin-bottom:6px}
@@ -312,6 +312,22 @@
       </div>
 
       <div style="margin-top:16px;max-width:520px"><label class="fld">Prepared by (firm / consultant) <span style="font-weight:400;color:var(--muted)">— appears on the exported cover page</span></label><input type="text" id="preparedBy" placeholder="e.g. The Homeland Security Consulting Group, LLC" onchange="S.preparedBy=this.value;save()"></div>
+
+      <div class="grid2" style="margin-top:16px">
+        <div><label class="fld">Brand color <span style="font-weight:400;color:var(--muted)">— accents the exported plan</span></label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="color" id="brandColor" value="#1d4ed8" onchange="S.brandColor=this.value;save()" style="width:52px;height:38px;padding:2px;border:1px solid var(--line);border-radius:8px;cursor:pointer">
+            <span style="font-size:12px;color:var(--muted)">Used on the cover page and section accents when you print or export. The live tool stays as-is.</span>
+          </div>
+        </div>
+        <div><label class="fld">Logo <span style="font-weight:400;color:var(--muted)">— appears on the cover page</span></label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn ghost sm" onclick="document.getElementById('brandLogoFile').click()">⤒ Upload logo</button>
+            <input type="file" id="brandLogoFile" accept="image/*" style="display:none" onchange="onLogoUpload(this)">
+            <span id="brandLogoStatus" style="font-size:12px;color:var(--muted)">No logo uploaded</span>
+          </div>
+        </div>
+      </div>
 
       <div id="industryBlock">
         <h3>Industry</h3>
@@ -591,7 +607,7 @@ const SCENARIOS=[
   {id:"supply",ico:"📦",t:"Supply chain failure",d:"Critical vendor / supplier collapses",hits:["Supply","Distribution","Warehouse","Pharmacy","materials","Procurement","Food","fuel","water"]}];
 
 /* ============ STATE ============ */
-let S={sector:"private",orgName:"",owner:"",preparedBy:"",industry:"technology",size:"251–1,000",
+let S={sector:"private",orgName:"",owner:"",preparedBy:"",brandColor:"#1d4ed8",brandLogo:"",industry:"technology",size:"251–1,000",
   depts:[],customDepts:[],regs:[],bia:[],bcp:null,scenario:null,injects:[],aar:null,unmappedApps:[],risk:{}};
 const CRIT_ORDER={Critical:0,High:1,Medium:2,Low:3};
 const STEPS=[["profile","Profile","Org inputs"],["bia","BIA","Impact analysis"],["analysis","Analysis","Resilience gaps"],["bcp","Plan","Continuity strategies"],["test","Test","Tabletop exercise"],["aar","AAR","After action"]];
@@ -1414,6 +1430,7 @@ function recCard(i){
 function sec(title,body){return `<div class="bcp-sec"><h4 onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">▾ ${title}</h4><div class="body">${body}</div></div>`;}
 function recTemplate(f){
   const fn=(f.func+" "+f.dept).toLowerCase();
+  const pub=S.sector==="public";
   const T=(strategy,steps,backup,deps,resources)=>({strategy,steps,backup,deps,resources});
   if(/platform|hosting|saas|tenant|ingestion|pipeline|grid|scada|plant|production|control center|generation/.test(fn))
     return T("Fail over to redundant/standby infrastructure and restore service from the last known-good state.",
@@ -1424,9 +1441,9 @@ function recTemplate(f){
        "Validate data integrity to the RPO; replay queued or buffered data.",
        "Confirm service restored against SLA, notify stakeholders, begin post-incident review."],
       "Degraded mode: serve read-only or cached state while the redundant standby cluster carries load and the primary is rebuilt.",
-      "Cloud provider (AWS/Azure/GCP), DNS, identity/SSO, network connectivity, IaC repository.",
-      "On-call SRE (primary + backup), standby capacity in an alternate region, runbook access.");
-  if(/ehr|record|ledger|core|data|vital|database|reporting/.test(fn))
+      "Cloud provider (AWS/Azure/GCP"+(pub?"/GovCloud":"")+"), DNS, identity/SSO, network connectivity, IaC repository.",
+      (pub?"On-call systems duty officer":"On-call SRE")+" (primary + backup), standby capacity in an alternate region, runbook access.");
+  if(/ehr|record|ledger|\bcore\b|data|vital|database|reporting/.test(fn))
     return T("Restore from the replicated system or most recent backup within the RPO; operate on downtime procedures meanwhile.",
       ["Switch users to the replicated/standby instance if available.",
        "If unavailable, initiate restore from the latest backup meeting the RPO.",
@@ -1437,7 +1454,7 @@ function recTemplate(f){
       "Downtime procedures: paper forms or an offline cache; designated staff re-enter data once systems are restored.",
       "Backup/replication system, storage, identity/access, the applications that consume this data.",
       "Data owner / DBA (primary + backup), validated backups, downtime forms, restoration runbook.");
-  if(/payment|pos|billing|settl|invoice|revenue|procurement|payroll|treasury|reconcil/.test(fn))
+  if(/payment|\bpos\b|billing|settl|invoice|revenue|procurement|payroll|treasury|reconcil/.test(fn))
     return T("Switch to a backup processor or offline capture; reconcile all transactions once systems are restored.",
       ["Activate the backup payment processor or offline capture mode.",
        "Queue transactions securely for later processing.",
@@ -1448,8 +1465,18 @@ function recTemplate(f){
       "Offline capture or a secondary processor; a manual interim run for payroll/procurement with a later true-up.",
       "Payment processor, banking partners, ERP/finance system, identity.",
       "Finance lead (primary + backup), backup processor access, reconciliation checklist.");
-  if(/identity|sso|iam|access management/.test(fn))
-    return T("Restore the identity provider from standby; use break-glass emergency accounts for critical access only.",
+  if(/identity|\bsso\b|\biam\b|access management/.test(fn))
+    return pub?T("Restore identity/credential verification from standby; use sealed emergency-access credentials for critical systems only.",
+      ["Confirm the outage scope; switch to the secondary directory/authentication service if available.",
+       "Activate pre-provisioned emergency-access credentials (break-glass PIV/CAC exception) for critical systems only.",
+       "Restrict access to essential personnel during the degraded state.",
+       "Restore the primary identity/directory service and re-enable normal authentication.",
+       "Rotate or revoke any emergency credentials that were used.",
+       "Audit all access granted during the window and report per agency policy."],
+      "Sealed emergency-access credentials; a secondary directory/authentication service.",
+      "Identity/credential provider, directory services, MFA, and every downstream system.",
+      "ISSO / identity owner (primary + backup), sealed emergency credentials, audit-log access.")
+    :T("Restore the identity provider from standby; use break-glass emergency accounts for critical access only.",
       ["Confirm the IdP outage scope; switch to the secondary IdP/region if available.",
        "Activate pre-provisioned break-glass accounts for critical systems only.",
        "Restrict access to essential personnel during the degraded state.",
@@ -1459,8 +1486,18 @@ function recTemplate(f){
       "Sealed break-glass / local emergency accounts; a secondary identity-provider region.",
       "Identity provider (Okta/Entra), directory, MFA provider, and every downstream application.",
       "IAM owner (primary + backup), sealed break-glass credentials, audit-log access.");
-  if(/security|soc|fraud|monitor|surveil|threat|incident response/.test(fn))
-    return T("Maintain monitoring via redundant tooling and on-call analysts; apply manual controls at critical points.",
+  if(/security|\bsoc\b|fraud|monitor|surveil|threat|incident response/.test(fn))
+    return pub?T("Maintain security and situational-awareness coverage through backup watch staff and manual posts; apply heightened physical controls at critical sites.",
+      ["Activate backup watch/dispatch coverage or mutual-aid law-enforcement support.",
+       "Stand up on-call security/emergency-management staff (primary + backup).",
+       "Apply heightened manual controls and guard posts at high-risk or critical facilities.",
+       "Preserve incident logs, radio traffic, and evidence for the disruption window.",
+       "Restore primary monitoring/dispatch capability and validate that coverage gaps were filled.",
+       "Review any events or access that may have been missed and report per agency policy."],
+      "Backup watch center or mutual-aid law-enforcement/security support; manual guard posts and access checks at critical sites.",
+      "Watch center / dispatch systems, radios, threat feeds, physical access control systems.",
+      "Security / emergency-management lead (primary + backup), backup coverage, escalation contacts.")
+    :T("Maintain monitoring via redundant tooling and on-call analysts; apply manual controls at critical points.",
       ["Activate the secondary monitoring/SIEM feed or managed-SOC failover.",
        "Stand up on-call analyst coverage (primary + backup).",
        "Apply heightened manual controls at high-risk entry points.",
@@ -1481,7 +1518,7 @@ function recTemplate(f){
       "Overflow / alternate contact site; backup telephony; pre-written holding statements.",
       "Telephony / contact platform, status page, knowledge base, staffing.",
       "Support / PIO lead (primary + backup), backup telephony access, message templates.");
-  if(/supply|logistics|warehouse|fulfil|ship|food|water distribution|fuel|shelter|mass care|materials|inventory/.test(fn))
+  if(/supply|logistics|warehouse|fulfil|shipping|shipment|food|water distribution|fuel|shelter|mass care|materials|inventory/.test(fn))
     return T("Activate pre-qualified alternate suppliers/carriers and draw down safety stock; track manually if systems are down.",
       ["Activate pre-qualified alternate supplier / carrier agreements.",
        "Draw down safety stock or staged resources to bridge the gap.",
@@ -1503,7 +1540,7 @@ function recTemplate(f){
       "Backup generators/UPS, fuel supply, mutual-aid partners, utilities, transportation.",
       "Facilities / utility lead (primary + backup), generators, fuel contracts, crew roster.");
   if(/succession|leadership|governance|continuity of government/.test(fn))
-    return T("Activate pre-designated successors (three deep) and delegations of authority immediately.",
+    return pub?T("Activate pre-designated successors (three deep) and delegations of authority immediately.",
       ["Confirm availability of the primary leader; if unavailable, notify the first successor.",
        "Activate the delegations of authority for the assumed role.",
        "Communicate the change of authority to staff and partners.",
@@ -1512,8 +1549,18 @@ function recTemplate(f){
        "Review and update the order of succession if gaps appeared."],
       "Pre-designated successors (3 deep) and documented delegations of authority.",
       "Succession roster, delegation documents, secure communications.",
-      "Successors (3 deep), delegation paperwork, notification channel.");
-  if(/clinical|patient|emergency patient|medication|pharmacy|lab|diagnostic|health|medical/.test(fn))
+      "Successors (3 deep), delegation paperwork, notification channel.")
+    :T("Activate the pre-designated successor and formally delegate signing/decision authority immediately.",
+      ["Confirm availability of the primary executive; if unavailable, notify the designated successor.",
+       "Formally delegate signing authority and key decision rights to the successor.",
+       "Communicate the change in leadership to staff, board, and key partners.",
+       "Maintain a decision log under the acting leader.",
+       "Restore normal leadership and formally transfer authority back.",
+       "Review and update the succession plan if gaps appeared."],
+      "A documented succession plan and delegation of authority for signing/decisions.",
+      "Succession plan, delegation-of-authority documents, secure communications.",
+      "Designated successor, delegation paperwork, board/notification channel.");
+  if(/clinical|patient|emergency patient|medication|pharmacy|\blab\b|laborator|diagnostic|health|medical/.test(fn))
     return T("Maintain patient care via downtime clinical procedures and divert or surge where capacity is lost.",
       ["Initiate clinical downtime procedures; switch to paper charting if EHR is down.",
        "Triage and, if needed, divert or transfer patients to maintain safety.",
@@ -1618,20 +1665,54 @@ function buildAAR(){
 /* ============ PERSISTENCE ============ */
 function save(){try{localStorage.setItem("cb_state",JSON.stringify(S));localStorage.setItem("cb_step",JSON.stringify({maxStep,stepIdx}))}catch(e){}}
 /* ---- Branded cover page, printed only in PDF/print output ---- */
+/* ---- Brand color: only overrides --accent/--accent-soft inside @media print, so the live editor stays the standard product blue and only the exported document picks up the client's color ---- */
+function hexToSoft(hex){
+  try{
+    hex=String(hex||"#1d4ed8").replace('#','');
+    if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
+    const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+    const mix=v=>Math.round(v+(255-v)*0.88);
+    return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+  }catch(e){return "#eff4ff";}
+}
+function applyBrandPrintStyle(){
+  let tag=document.getElementById("brandPrintStyle");
+  if(!tag){tag=document.createElement("style");tag.id="brandPrintStyle";document.head.appendChild(tag);}
+  const c=S.brandColor||"#1d4ed8";
+  tag.textContent=`@media print{ :root{ --accent:${c} !important; --accent-soft:${hexToSoft(c)} !important; } }`;
+}
+function onLogoUpload(input){
+  const f=input.files[0];if(!f)return;
+  if(!/^image\//.test(f.type)){alert("Please choose an image file (PNG, JPG, or SVG).");input.value="";return;}
+  const rd=new FileReader();
+  rd.onload=e=>{S.brandLogo=e.target.result;save();updateLogoStatus();};
+  rd.readAsDataURL(f);
+  input.value="";
+}
+function removeBrandLogo(){S.brandLogo="";save();updateLogoStatus();}
+function updateLogoStatus(){
+  const el=document.getElementById("brandLogoStatus");if(!el)return;
+  el.innerHTML=S.brandLogo
+    ?'<span style="color:var(--green);font-weight:600">✓ Logo attached</span> <a style="cursor:pointer;color:var(--muted);text-decoration:underline;margin-left:6px" onclick="removeBrandLogo()">remove</a>'
+    :"No logo uploaded";
+}
 function fillCover(){
   try{
     const pbEl=document.getElementById("preparedBy");
     const pb=(pbEl&&pbEl.value)||S.preparedBy||"";
     S.preparedBy=pb;
+    applyBrandPrintStyle();
     const c=SECTOR_CFG[S.sector]||{planTitle:"Business Continuity Plan"};
     const dc=S.docctl||{};
     const cover=document.getElementById("printCover");
     if(!cover)return;
     cover.innerHTML=
-      '<div style="display:flex;flex-direction:column;justify-content:center;min-height:90vh;text-align:center;padding:40px">'
+      '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:90vh;text-align:center;padding:40px">'
+      +(S.brandLogo?('<img src="'+S.brandLogo+'" style="max-height:64px;max-width:280px;object-fit:contain;margin-bottom:26px">'):'')
+      +'<div style="width:46px;height:3px;background:var(--accent);margin-bottom:18px"></div>'
       +'<div style="font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#64748b">'+(esc(S.orgName)||"Organization")+'</div>'
       +'<h1 style="font-size:36px;margin:20px 0 10px;letter-spacing:-.02em">'+esc(c.planTitle||"Business Continuity Plan")+'</h1>'
-      +'<div style="font-size:15px;color:#334155">'+(S.sector==="public"?"FEMA CPG 101 / COOP":"ISO 22301 / 22317")+'</div>'
+      +'<div style="font-size:15px;color:var(--accent);font-weight:600">'+(S.sector==="public"?"FEMA CPG 101 / COOP":"ISO 22301 / 22317")+'</div>'
       +'<div style="margin-top:64px;font-size:14px;color:#334155;line-height:2">'
       +(dc.version?("Version "+esc(dc.version)+"<br>"):"")
       +(dc.date?("Effective "+esc(dc.date)+"<br>"):"")
@@ -1678,6 +1759,8 @@ function load(){try{
   const raw=localStorage.getItem("cb_state");if(!raw)return;const d=JSON.parse(raw);Object.assign(S,d);
   document.getElementById("orgName").value=S.orgName||"";document.getElementById("owner").value=S.owner||"";
   if(document.getElementById("preparedBy"))document.getElementById("preparedBy").value=S.preparedBy||"";
+  if(document.getElementById("brandColor"))document.getElementById("brandColor").value=S.brandColor||"#1d4ed8";
+  updateLogoStatus();
   document.getElementById("industry").value=S.industry==="government"?"technology":S.industry;
   applySector();
   document.querySelectorAll("#sizeChips .chip").forEach(c=>c.classList.toggle("on",c.textContent===S.size));
